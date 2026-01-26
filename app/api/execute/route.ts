@@ -35,21 +35,26 @@ export async function POST(request: NextRequest) {
     // Get user profile to check admin status and execution count
     const { data: profile } = await supabase
       .from('users')
-      .select('is_admin, is_paid, execution_count')
+      .select('is_admin, is_premium, free_executions_remaining')
       .eq('id', user.id)
       .single()
 
     // Check if user has executions remaining (skip for admins)
-    if (!profile?.is_admin && !profile?.is_paid && (profile?.execution_count || 0) >= 100) {
+    if (!profile?.is_admin && !profile?.is_premium && (profile?.free_executions_remaining || 0) <= 0) {
       return NextResponse.json({ 
         error: 'Execution limit reached. Please upgrade to continue.',
         limit_reached: true 
       }, { status: 403 })
     }
 
-    // Increment execution count (only for non-admin users)
-    if (!profile?.is_admin) {
-      await supabase.rpc('increment_execution_count', { user_id: user.id })
+    // Decrement free executions (only for non-admin, non-premium users)
+    if (!profile?.is_admin && !profile?.is_premium) {
+      await supabase
+        .from('users')
+        .update({ 
+          free_executions_remaining: (profile?.free_executions_remaining || 100) - 1 
+        })
+        .eq('id', user.id)
     }
 
     const pistonLanguage = languageMap[language] || language

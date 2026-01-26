@@ -46,13 +46,13 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const loadUserData = async () => {
     const { data } = await supabase
       .from('users')
-      .select('execution_count, is_paid, is_admin')
+      .select('free_executions_remaining, is_premium, is_admin')
       .eq('id', user.id)
       .single()
 
     if (data) {
-      setExecutions(data.execution_count || 0)
-      setIsPaid(data.is_paid || false)
+      setExecutions(100 - (data.free_executions_remaining || 100))
+      setIsPaid(data.is_premium || false)
       setIsAdmin(data.is_admin || false)
     }
   }

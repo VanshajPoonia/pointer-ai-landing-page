@@ -13,8 +13,8 @@ interface User {
   id: string
   email: string
   is_admin: boolean
-  is_paid: boolean
-  execution_count: number
+  is_premium: boolean
+  free_executions_remaining: number
   created_at: string
 }
 
@@ -117,9 +117,9 @@ export function AdminDashboard() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Paid Users</p>
+                <p className="text-sm text-muted-foreground">Premium Users</p>
                 <p className="text-3xl font-bold">
-                  {users.filter((u) => u.is_paid).length}
+                  {users.filter((u) => u.is_premium).length}
                 </p>
               </div>
               <Crown className="h-10 w-10 text-yellow-500" />
@@ -169,14 +169,14 @@ export function AdminDashboard() {
                               Admin
                             </Badge>
                           )}
-                          {user.is_paid && (
+                          {user.is_premium && (
                             <Badge variant="default" className="bg-green-500">
-                              Paid
+                              Premium
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                          <span>Executions: {user.execution_count}</span>
+                          <span>Free Executions Left: {user.free_executions_remaining}</span>
                           <span>
                             Joined: {new Date(user.created_at).toLocaleDateString()}
                           </span>
