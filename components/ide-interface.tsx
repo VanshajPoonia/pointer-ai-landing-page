@@ -181,7 +181,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-white">
+    <div className="flex h-screen flex-col bg-[#1e1e1e]">
       <IDEHeader 
         user={user} 
         executions={executions} 
@@ -209,30 +209,43 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           }}
         />
 
-        <div className="flex flex-1 flex-col bg-gray-50">
-          <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-6 py-3 shadow-sm">
-            <Button
-              onClick={saveFile}
-              size="sm"
-              variant="ghost"
-              className="text-gray-700 hover:bg-gray-100 rounded-lg"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save
-            </Button>
-            <Button
-              onClick={runCode}
-              size="sm"
-              disabled={isRunning}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
-            >
-              <Play className="mr-2 h-4 w-4" />
-              {isRunning ? 'Running...' : 'Run'}
-            </Button>
+        <div className="flex flex-1 flex-col">
+          {/* Tab bar */}
+          <div className="flex items-center h-9 bg-[#252526] border-b border-[#1e1e1e]">
+            {activeFile && (
+              <div className="flex items-center gap-2 px-4 h-full bg-[#1e1e1e] text-sm text-[#cccccc] border-r border-[#1e1e1e]">
+                <FileCode className="h-3.5 w-3.5" />
+                {activeFile.name}
+              </div>
+            )}
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex items-center justify-between h-10 bg-[#1e1e1e] border-b border-[#252526] px-4">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={saveFile}
+                size="sm"
+                variant="ghost"
+                className="h-7 text-[#cccccc] hover:bg-[#2a2d2e] text-xs"
+              >
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                Save
+              </Button>
+              <Button
+                onClick={runCode}
+                size="sm"
+                disabled={isRunning}
+                className="h-7 bg-[#0e639c] hover:bg-[#1177bb] text-white text-xs"
+              >
+                <Play className="mr-1.5 h-3.5 w-3.5" />
+                {isRunning ? 'Running...' : 'Run'}
+              </Button>
+            </div>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="ml-auto rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="h-7 rounded bg-[#3c3c3c] border border-[#3c3c3c] px-3 text-xs text-[#cccccc] focus:border-[#007acc] focus:outline-none"
             >
               <option value="javascript">JavaScript</option>
               <option value="typescript">TypeScript</option>
@@ -247,27 +260,23 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
             </select>
           </div>
 
+          {/* Editor and Output */}
           <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 p-4">
-              <div className="h-full rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
-                <CodeEditor
-                  value={code}
-                  language={language}
-                  onChange={setCode}
-                />
-              </div>
+            <div className="flex-1">
+              <CodeEditor
+                value={code}
+                language={language}
+                onChange={setCode}
+              />
             </div>
-            <div className="w-96 px-4 py-4">
-              <div className="h-full rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
-                <OutputPanel output={output} />
-              </div>
+            <div className="w-[400px] border-l border-[#252526]">
+              <OutputPanel output={output} />
             </div>
           </div>
 
-          <div className="h-56 px-4 pb-4">
-            <div className="h-full rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
-              <Terminal output={output} onClear={() => setOutput('')} />
-            </div>
+          {/* Terminal */}
+          <div className="h-[200px] border-t border-[#252526]">
+            <Terminal output={output} onClear={() => setOutput('')} />
           </div>
         </div>
       </div>
