@@ -330,11 +330,11 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           </div>
 
           {/* Bottom Panel - Terminal and Output */}
-          <div className="h-[220px] border-t border-[#191919] flex">
-            <div className="flex-1 min-w-0">
-              <Terminal output={output} onClear={() => setOutput('')} />
+          <div className="h-[280px] border-t border-[#191919] flex">
+            <div className="flex-[2] min-w-0">
+              <Terminal onClear={() => setOutput('')} />
             </div>
-            <div className="w-[350px] border-l border-[#191919]">
+            <div className="flex-1 min-w-[300px] border-l border-[#191919]">
               <OutputPanel output={output} />
             </div>
           </div>
