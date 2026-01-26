@@ -258,7 +258,9 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
             </div>
           </div>
 
-          <Terminal />
+          <div className="h-48 border-t border-[#333]">
+            <Terminal output={output} onClear={() => setOutput('')} />
+          </div>
         </div>
       </div>
     </div>
