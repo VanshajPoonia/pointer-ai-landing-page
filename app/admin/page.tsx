@@ -11,13 +11,15 @@ export default async function AdminPage() {
   }
 
   // Check if user is admin
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('users')
     .select('is_admin')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.is_admin) {
+  console.log('[v0] Admin page - checking user profile:', { profile, error })
+
+  if (error || !profile?.is_admin) {
     redirect('/ide')
   }
 

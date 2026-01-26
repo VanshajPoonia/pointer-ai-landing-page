@@ -46,13 +46,15 @@ export function AdminDashboard() {
     setLoading(true)
     
     // Load all users
-    const { data: usersData } = await supabase
+    const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('*')
       .order('created_at', { ascending: false })
 
+    console.log('[v0] Admin dashboard - users query:', { usersData, usersError })
+
     // Load all code snippets with user email
-    const { data: snippetsData } = await supabase
+    const { data: snippetsData, error: snippetsError } = await supabase
       .from('code_snippets')
       .select(`
         *,
@@ -61,6 +63,8 @@ export function AdminDashboard() {
         )
       `)
       .order('created_at', { ascending: false })
+
+    console.log('[v0] Admin dashboard - snippets query:', { snippetsData, snippetsError })
 
     if (usersData) setUsers(usersData)
     if (snippetsData) setSnippets(snippetsData as any)
