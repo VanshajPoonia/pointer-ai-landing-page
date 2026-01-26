@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import * as monaco from 'monaco-editor'
+import Editor from '@monaco-editor/react'
 
 interface CodeEditorProps {
   value: string
@@ -10,64 +9,55 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null)
-  const monacoEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
-
-  useEffect(() => {
-    if (editorRef.current && !monacoEditorRef.current) {
-      monacoEditorRef.current = monaco.editor.create(editorRef.current, {
-        value,
-        language: language === 'cpp' ? 'cpp' : language,
-        theme: 'vs-dark',
-        automaticLayout: true,
-        fontSize: 13,
-        fontFamily: "'Consolas', 'Courier New', monospace",
-        fontLigatures: true,
-        minimap: { enabled: true },
-        scrollBeyondLastLine: false,
-        wordWrap: 'on',
-        tabSize: 2,
-        lineNumbers: 'on',
-        renderLineHighlight: 'line',
-        smoothScrolling: true,
-        cursorBlinking: 'blink',
-        cursorStyle: 'line',
-        folding: true,
-        glyphMargin: true,
-        lineDecorationsWidth: 0,
-        lineNumbersMinChars: 3,
-        renderWhitespace: 'selection',
-        scrollbar: {
-          verticalScrollbarSize: 10,
-          horizontalScrollbarSize: 10,
-        },
-      })
-
-      monacoEditorRef.current.onDidChangeModelContent(() => {
-        onChange(monacoEditorRef.current?.getValue() || '')
-      })
+  const getMonacoLanguage = (lang: string) => {
+    const languageMap: Record<string, string> = {
+      javascript: 'javascript',
+      typescript: 'typescript',
+      python: 'python',
+      java: 'java',
+      cpp: 'cpp',
+      c: 'c',
+      go: 'go',
+      rust: 'rust',
+      php: 'php',
+      ruby: 'ruby',
     }
+    return languageMap[lang] || 'javascript'
+  }
 
-    return () => {
-      monacoEditorRef.current?.dispose()
-      monacoEditorRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    if (monacoEditorRef.current && monacoEditorRef.current.getValue() !== value) {
-      monacoEditorRef.current.setValue(value)
-    }
-  }, [value])
-
-  useEffect(() => {
-    if (monacoEditorRef.current) {
-      const model = monacoEditorRef.current.getModel()
-      if (model) {
-        monaco.editor.setModelLanguage(model, language === 'cpp' ? 'cpp' : language)
-      }
-    }
-  }, [language])
-
-  return <div ref={editorRef} className="h-full w-full bg-[#1e1e1e]" />
+  return (
+    <div className="h-full w-full">
+      <Editor
+        height="100%"
+        language={getMonacoLanguage(language)}
+        value={value}
+        theme="vs-dark"
+        onChange={(val) => onChange(val || '')}
+        options={{
+          fontSize: 14,
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+          minimap: { enabled: true },
+          scrollBeyondLastLine: false,
+          wordWrap: 'on',
+          tabSize: 2,
+          lineNumbers: 'on',
+          renderLineHighlight: 'line',
+          smoothScrolling: true,
+          cursorBlinking: 'blink',
+          cursorStyle: 'line',
+          folding: true,
+          glyphMargin: false,
+          lineDecorationsWidth: 10,
+          lineNumbersMinChars: 4,
+          padding: { top: 16, bottom: 16 },
+          automaticLayout: true,
+        }}
+        loading={
+          <div className="h-full w-full flex items-center justify-center bg-[#1e1e1e]">
+            <div className="text-[#808080] text-sm">Loading editor...</div>
+          </div>
+        }
+      />
+    </div>
+  )
 }
