@@ -44,7 +44,7 @@ export async function updateSession(request: NextRequest) {
   if (
     // if the user is not logged in and protected paths are accessed, redirect to the login page
     (request.nextUrl.pathname.startsWith('/protected') || 
-     request.nextUrl.pathname.startsWith('/ide') ||
+     (request.nextUrl.pathname.startsWith('/ide') && !request.nextUrl.pathname.startsWith('/ide-preview')) ||
      request.nextUrl.pathname.startsWith('/admin')) &&
     !user
   ) {
