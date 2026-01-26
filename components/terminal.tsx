@@ -55,36 +55,38 @@ export function Terminal({ output, onClear }: TerminalProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#181818]">
-      <div className="flex items-center justify-between px-4 py-2 bg-[#252526]">
-        <span className="text-xs font-semibold text-[#cccccc] uppercase tracking-wider">Terminal</span>
+    <div className="flex flex-col h-full bg-[#1e1e1e]">
+      <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919]">
+        <div className="flex items-center gap-4">
+          <span className="text-[11px] font-semibold text-white uppercase tracking-wide">Terminal</span>
+        </div>
         <button
           onClick={onClear}
-          className="p-1 hover:bg-[#3e3e42] rounded transition-colors text-[#cccccc]"
+          className="p-1 hover:bg-[#3e3e42] rounded transition-colors text-[#858585] hover:text-[#cccccc]"
           title="Clear terminal"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
       <div
         ref={terminalRef}
-        className="flex-1 overflow-auto p-3 bg-[#1e1e1e]"
+        className="flex-1 overflow-auto px-4 py-3 bg-[#1e1e1e] font-mono"
       >
         {output ? (
-          <pre className="whitespace-pre-wrap break-words text-[#cccccc] font-mono text-sm leading-relaxed">{output}</pre>
+          <pre className="whitespace-pre-wrap break-words text-[#cccccc] text-[13px] leading-[1.4]">{output}</pre>
         ) : (
-          <div className="text-[#6a6a6a] font-mono text-sm">Output will appear here...</div>
+          <div className="text-[#6a6a6a] text-[13px]">Output will appear here...</div>
         )}
       </div>
-      <div className="flex items-center px-3 py-2 bg-[#1e1e1e] border-t border-[#252526]">
-        <span className="text-[#4ec9b0] mr-2 font-mono text-sm">$</span>
+      <div className="flex items-center h-[28px] px-4 bg-[#1e1e1e] border-t border-[#333333]">
+        <span className="text-[#569cd6] mr-2 font-mono text-[13px]">~$</span>
         <input
           type="text"
           value={currentCommand}
           onChange={(e) => setCurrentCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-[#cccccc] font-mono text-sm placeholder:text-[#6a6a6a]"
-          placeholder="Type a command..."
+          className="flex-1 bg-transparent outline-none text-[#cccccc] font-mono text-[13px] placeholder:text-[#6a6a6a]"
+          placeholder=""
         />
       </div>
     </div>

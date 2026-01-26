@@ -69,5 +69,5 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
     }
   }, [language])
 
-  return <div ref={editorRef} className="h-full w-full" />
+  return <div ref={editorRef} className="h-full w-full bg-[#1e1e1e]" />
 }

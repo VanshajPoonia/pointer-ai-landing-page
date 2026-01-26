@@ -25,16 +25,21 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
   }
 
   return (
-    <div className="flex h-12 items-center justify-between bg-[#181818] border-b border-[#2b2b2b] px-4">
-      <div className="flex items-center gap-4">
-        <h1 className="text-base font-semibold text-[#f0f0f0]">CodeIDE</h1>
+    <div className="flex h-[48px] items-center justify-between bg-[#323233] border-b border-[#191919] px-4">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-gradient-to-br from-[#007acc] to-[#0e639c] flex items-center justify-center">
+            <span className="text-white text-xs font-bold">C</span>
+          </div>
+          <h1 className="text-[13px] font-medium text-white">CodeIDE</h1>
+        </div>
         <Button
           onClick={onNewFile}
           size="sm"
           variant="ghost"
-          className="h-8 text-[#cccccc] hover:bg-[#2a2d2e] text-xs"
+          className="h-[26px] px-2.5 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
         >
-          <FilePlus className="mr-1.5 h-3.5 w-3.5" />
+          <FilePlus className="mr-1.5 h-4 w-4" />
           New File
         </Button>
       </div>
@@ -44,7 +49,7 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
           <Link href="/admin">
             <Button
               size="sm"
-              className="h-8 bg-[#f59e0b] text-white hover:bg-[#d97706] text-xs"
+              className="h-[26px] px-2.5 bg-[#f59e0b] text-black hover:bg-[#fbbf24] text-[12px] rounded-[3px] font-medium"
             >
               <Crown className="mr-1.5 h-3.5 w-3.5" />
               Admin
@@ -52,18 +57,15 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
           </Link>
         )}
         
-        <div className="flex items-center gap-1.5 bg-[#252526] px-2.5 py-1 rounded text-xs border border-[#3c3c3c]">
+        <div className="flex items-center gap-1.5 bg-[#1e1e1e] px-2.5 py-1 rounded-[3px] text-[12px] border border-[#3c3c3c]">
           {isAdmin ? (
-            <span className="text-[#f59e0b]">Admin • Unlimited</span>
+            <span className="text-[#f59e0b] font-medium">Unlimited</span>
           ) : isPaid ? (
-            <span className="text-[#4ade80]">Pro Plan</span>
+            <span className="text-[#4ade80] font-medium">Pro</span>
           ) : (
             <span className="text-[#cccccc]">
               <span className="font-medium">{executions}</span>
               <span className="text-[#808080]">/100</span>
-              {executions >= 100 && (
-                <span className="ml-1.5 text-[#f87171]">(Limit)</span>
-              )}
             </span>
           )}
         </div>
@@ -72,22 +74,24 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
           <Button
             onClick={() => window.open('https://buymeacoffee.com/yourhandle', '_blank')}
             size="sm"
-            className="h-8 bg-[#0e639c] hover:bg-[#1177bb] text-white text-xs"
+            className="h-[26px] px-2.5 bg-[#0e639c] hover:bg-[#1177bb] text-white text-[12px] rounded-[3px]"
           >
             <Coffee className="mr-1.5 h-3.5 w-3.5" />
             Upgrade
           </Button>
         )}
 
-        <div className="text-xs text-[#cccccc]">{user.email}</div>
+        <div className="h-5 w-px bg-[#3c3c3c]" />
+
+        <div className="text-[12px] text-[#cccccc]">{user.email}</div>
 
         <Button
           onClick={handleSignOut}
           size="sm"
           variant="ghost"
-          className="h-8 text-[#cccccc] hover:bg-[#2a2d2e]"
+          className="h-[26px] w-[26px] p-0 text-[#cccccc] hover:bg-[#3e3e42] rounded-[3px]"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <LogOut className="h-4 w-4" />
         </Button>
       </div>
     </div>

@@ -191,6 +191,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       />
       
       <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
         <FileExplorer
           files={files}
           activeFile={activeFile}
@@ -209,74 +210,79 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           }}
         />
 
-        <div className="flex flex-1 flex-col">
-          {/* Tab bar */}
-          <div className="flex items-center h-9 bg-[#252526] border-b border-[#1e1e1e]">
-            {activeFile && (
-              <div className="flex items-center gap-2 px-4 h-full bg-[#1e1e1e] text-sm text-[#cccccc] border-r border-[#1e1e1e]">
-                <FileCode className="h-3.5 w-3.5" />
-                {activeFile.name}
-              </div>
-            )}
-          </div>
-
-          {/* Toolbar */}
-          <div className="flex items-center justify-between h-10 bg-[#1e1e1e] border-b border-[#252526] px-4">
+        {/* Main Content */}
+        <div className="flex flex-1 flex-col min-w-0">
+          {/* Tab bar with actions */}
+          <div className="flex items-center justify-between h-[35px] bg-[#252526] border-b border-[#191919] px-2">
+            <div className="flex items-center h-full">
+              {activeFile ? (
+                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
+                  <FileCode className="h-4 w-4 text-[#519aba]" />
+                  <span>{activeFile.name}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
+                  <FileCode className="h-4 w-4 text-[#519aba]" />
+                  <span>Untitled</span>
+                </div>
+              )}
+            </div>
+            
             <div className="flex items-center gap-2">
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer"
+              >
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="c">C</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+                <option value="php">PHP</option>
+                <option value="ruby">Ruby</option>
+              </select>
               <Button
                 onClick={saveFile}
                 size="sm"
                 variant="ghost"
-                className="h-7 text-[#cccccc] hover:bg-[#2a2d2e] text-xs"
+                className="h-[26px] px-3 text-[#cccccc] hover:bg-[#3c3c3c] text-[12px] rounded-[3px]"
               >
-                <Save className="mr-1.5 h-3.5 w-3.5" />
+                <Save className="mr-1.5 h-4 w-4" />
                 Save
               </Button>
               <Button
                 onClick={runCode}
                 size="sm"
                 disabled={isRunning}
-                className="h-7 bg-[#0e639c] hover:bg-[#1177bb] text-white text-xs"
+                className="h-[26px] px-3 bg-[#0e639c] hover:bg-[#1177bb] text-white text-[12px] rounded-[3px]"
               >
-                <Play className="mr-1.5 h-3.5 w-3.5" />
+                <Play className="mr-1.5 h-4 w-4" />
                 {isRunning ? 'Running...' : 'Run'}
               </Button>
             </div>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="h-7 rounded bg-[#3c3c3c] border border-[#3c3c3c] px-3 text-xs text-[#cccccc] focus:border-[#007acc] focus:outline-none"
-            >
-              <option value="javascript">JavaScript</option>
-              <option value="typescript">TypeScript</option>
-              <option value="python">Python</option>
-              <option value="java">Java</option>
-              <option value="cpp">C++</option>
-              <option value="c">C</option>
-              <option value="go">Go</option>
-              <option value="rust">Rust</option>
-              <option value="php">PHP</option>
-              <option value="ruby">Ruby</option>
-            </select>
           </div>
 
-          {/* Editor and Output */}
-          <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1">
-              <CodeEditor
-                value={code}
-                language={language}
-                onChange={setCode}
-              />
+          {/* Editor Area */}
+          <div className="flex-1 min-h-0">
+            <CodeEditor
+              value={code}
+              language={language}
+              onChange={setCode}
+            />
+          </div>
+
+          {/* Bottom Panel - Terminal and Output */}
+          <div className="h-[220px] border-t border-[#191919] flex">
+            <div className="flex-1 min-w-0">
+              <Terminal output={output} onClear={() => setOutput('')} />
             </div>
-            <div className="w-[400px] border-l border-[#252526]">
+            <div className="w-[350px] border-l border-[#191919]">
               <OutputPanel output={output} />
             </div>
-          </div>
-
-          {/* Terminal */}
-          <div className="h-[200px] border-t border-[#252526]">
-            <Terminal output={output} onClear={() => setOutput('')} />
           </div>
         </div>
       </div>
