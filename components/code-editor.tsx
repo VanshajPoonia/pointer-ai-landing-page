@@ -11,6 +11,7 @@ interface CodeEditorProps {
 export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
   const getMonacoLanguage = (lang: string) => {
     const languageMap: Record<string, string> = {
+      // Popular languages
       javascript: 'javascript',
       typescript: 'typescript',
       python: 'python',
@@ -20,20 +21,52 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
       csharp: 'csharp',
       go: 'go',
       rust: 'rust',
+      // Web & Scripting
       php: 'php',
       ruby: 'ruby',
-      kotlin: 'kotlin',
-      swift: 'swift',
-      scala: 'scala',
       perl: 'perl',
       lua: 'lua',
-      r: 'r',
-      dart: 'dart',
-      elixir: 'elixir',
-      haskell: 'haskell',
-      sql: 'sql',
       bash: 'shell',
       powershell: 'powershell',
+      html: 'html',
+      css: 'css',
+      // Mobile & Modern
+      kotlin: 'kotlin',
+      swift: 'swift',
+      dart: 'dart',
+      objectivec: 'objective-c',
+      // Functional & JVM
+      scala: 'scala',
+      haskell: 'haskell',
+      elixir: 'elixir',
+      clojure: 'clojure',
+      fsharp: 'fsharp',
+      groovy: 'groovy',
+      // Data & Scientific
+      r: 'r',
+      julia: 'julia',
+      matlab: 'matlab',
+      // Systems & Performance
+      zig: 'rust', // Monaco doesn't have Zig, using Rust as fallback
+      nim: 'python', // Monaco doesn't have Nim, using Python as fallback
+      crystal: 'ruby', // Monaco doesn't have Crystal, using Ruby as fallback
+      d: 'd',
+      v: 'go', // Monaco doesn't have V, using Go as fallback
+      // Data & Config
+      sql: 'sql',
+      json: 'json',
+      yaml: 'yaml',
+      xml: 'xml',
+      toml: 'ini',
+      graphql: 'graphql',
+      // Other
+      assembly: 'asm',
+      fortran: 'fortran',
+      cobol: 'cobol',
+      lisp: 'scheme',
+      erlang: 'erlang',
+      ocaml: 'ocaml',
+      pascal: 'pascal',
     }
     return languageMap[lang] || 'javascript'
   }

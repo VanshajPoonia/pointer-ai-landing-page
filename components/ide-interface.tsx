@@ -234,29 +234,70 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                 onChange={(e) => setLanguage(e.target.value)}
                 className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer"
               >
-                <option value="javascript">JavaScript</option>
-                <option value="typescript">TypeScript</option>
-                <option value="python">Python</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
-                <option value="c">C</option>
-                <option value="csharp">C#</option>
-                <option value="go">Go</option>
-                <option value="rust">Rust</option>
-                <option value="php">PHP</option>
-                <option value="ruby">Ruby</option>
-                <option value="kotlin">Kotlin</option>
-                <option value="swift">Swift</option>
-                <option value="scala">Scala</option>
-                <option value="perl">Perl</option>
-                <option value="lua">Lua</option>
-                <option value="r">R</option>
-                <option value="dart">Dart</option>
-                <option value="elixir">Elixir</option>
-                <option value="haskell">Haskell</option>
-                <option value="sql">SQL</option>
-                <option value="bash">Bash</option>
-                <option value="powershell">PowerShell</option>
+                <optgroup label="Popular">
+                  <option value="javascript">JavaScript</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="c">C</option>
+                  <option value="csharp">C#</option>
+                  <option value="go">Go</option>
+                  <option value="rust">Rust</option>
+                </optgroup>
+                <optgroup label="Web & Scripting">
+                  <option value="php">PHP</option>
+                  <option value="ruby">Ruby</option>
+                  <option value="perl">Perl</option>
+                  <option value="lua">Lua</option>
+                  <option value="bash">Bash</option>
+                  <option value="powershell">PowerShell</option>
+                  <option value="html">HTML</option>
+                  <option value="css">CSS</option>
+                </optgroup>
+                <optgroup label="Mobile & Modern">
+                  <option value="kotlin">Kotlin</option>
+                  <option value="swift">Swift</option>
+                  <option value="dart">Dart</option>
+                  <option value="objectivec">Objective-C</option>
+                </optgroup>
+                <optgroup label="Functional & JVM">
+                  <option value="scala">Scala</option>
+                  <option value="haskell">Haskell</option>
+                  <option value="elixir">Elixir</option>
+                  <option value="clojure">Clojure</option>
+                  <option value="fsharp">F#</option>
+                  <option value="groovy">Groovy</option>
+                </optgroup>
+                <optgroup label="Data & Scientific">
+                  <option value="r">R</option>
+                  <option value="julia">Julia</option>
+                  <option value="matlab">MATLAB</option>
+                </optgroup>
+                <optgroup label="Systems & Performance">
+                  <option value="zig">Zig</option>
+                  <option value="nim">Nim</option>
+                  <option value="crystal">Crystal</option>
+                  <option value="d">D</option>
+                  <option value="v">V</option>
+                </optgroup>
+                <optgroup label="Data & Config">
+                  <option value="sql">SQL</option>
+                  <option value="json">JSON</option>
+                  <option value="yaml">YAML</option>
+                  <option value="xml">XML</option>
+                  <option value="toml">TOML</option>
+                  <option value="graphql">GraphQL</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="assembly">Assembly</option>
+                  <option value="fortran">Fortran</option>
+                  <option value="cobol">COBOL</option>
+                  <option value="lisp">Lisp</option>
+                  <option value="erlang">Erlang</option>
+                  <option value="ocaml">OCaml</option>
+                  <option value="pascal">Pascal</option>
+                </optgroup>
               </select>
               <Button
                 onClick={saveFile}
