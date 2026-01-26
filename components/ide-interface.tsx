@@ -240,10 +240,23 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                 <option value="java">Java</option>
                 <option value="cpp">C++</option>
                 <option value="c">C</option>
+                <option value="csharp">C#</option>
                 <option value="go">Go</option>
                 <option value="rust">Rust</option>
                 <option value="php">PHP</option>
                 <option value="ruby">Ruby</option>
+                <option value="kotlin">Kotlin</option>
+                <option value="swift">Swift</option>
+                <option value="scala">Scala</option>
+                <option value="perl">Perl</option>
+                <option value="lua">Lua</option>
+                <option value="r">R</option>
+                <option value="dart">Dart</option>
+                <option value="elixir">Elixir</option>
+                <option value="haskell">Haskell</option>
+                <option value="sql">SQL</option>
+                <option value="bash">Bash</option>
+                <option value="powershell">PowerShell</option>
               </select>
               <Button
                 onClick={saveFile}

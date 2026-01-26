@@ -17,10 +17,23 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
       java: 'java',
       cpp: 'cpp',
       c: 'c',
+      csharp: 'csharp',
       go: 'go',
       rust: 'rust',
       php: 'php',
       ruby: 'ruby',
+      kotlin: 'kotlin',
+      swift: 'swift',
+      scala: 'scala',
+      perl: 'perl',
+      lua: 'lua',
+      r: 'r',
+      dart: 'dart',
+      elixir: 'elixir',
+      haskell: 'haskell',
+      sql: 'sql',
+      bash: 'shell',
+      powershell: 'powershell',
     }
     return languageMap[lang] || 'javascript'
   }
