@@ -18,13 +18,19 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
       monacoEditorRef.current = monaco.editor.create(editorRef.current, {
         value,
         language: language === 'cpp' ? 'cpp' : language,
-        theme: 'vs-dark',
+        theme: 'vs',
         automaticLayout: true,
         fontSize: 14,
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
         minimap: { enabled: true },
         scrollBeyondLastLine: false,
         wordWrap: 'on',
         tabSize: 2,
+        lineNumbers: 'on',
+        renderLineHighlight: 'all',
+        smoothScrolling: true,
+        cursorBlinking: 'smooth',
+        padding: { top: 16, bottom: 16 },
       })
 
       monacoEditorRef.current.onDidChangeModelContent(() => {

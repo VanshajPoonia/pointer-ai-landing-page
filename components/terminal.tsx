@@ -55,12 +55,12 @@ export function Terminal({ output, onClear }: TerminalProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm">
-      <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d30] border-b border-[#3e3e42]">
-        <span className="text-xs font-medium">Terminal</span>
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <span className="text-sm font-semibold text-gray-900">Terminal</span>
         <button
           onClick={onClear}
-          className="p-1 hover:bg-[#3e3e42] rounded transition-colors"
+          className="p-1.5 hover:bg-gray-200 rounded-md transition-colors text-gray-600"
           title="Clear terminal"
         >
           <X className="w-4 h-4" />
@@ -68,22 +68,22 @@ export function Terminal({ output, onClear }: TerminalProps) {
       </div>
       <div
         ref={terminalRef}
-        className="flex-1 overflow-auto p-4 space-y-1"
+        className="flex-1 overflow-auto p-4 space-y-1 bg-gray-900"
       >
         {output ? (
-          <pre className="whitespace-pre-wrap break-words">{output}</pre>
+          <pre className="whitespace-pre-wrap break-words text-gray-100 font-mono text-sm leading-relaxed">{output}</pre>
         ) : (
-          <div className="text-[#808080]">Output will appear here...</div>
+          <div className="text-gray-500 font-mono text-sm">Output will appear here...</div>
         )}
       </div>
-      <div className="flex items-center px-4 py-2 bg-[#2d2d30] border-t border-[#3e3e42]">
-        <span className="text-[#4fc3f7] mr-2">$</span>
+      <div className="flex items-center px-4 py-3 bg-gray-50 border-t border-gray-200">
+        <span className="text-blue-600 font-bold mr-2">$</span>
         <input
           type="text"
           value={currentCommand}
           onChange={(e) => setCurrentCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-[#d4d4d4]"
+          className="flex-1 bg-transparent outline-none text-gray-900 placeholder:text-gray-400"
           placeholder="Type a command..."
         />
       </div>

@@ -181,7 +181,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#1e1e1e]">
+    <div className="flex h-screen flex-col bg-white">
       <IDEHeader 
         user={user} 
         executions={executions} 
@@ -209,13 +209,13 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           }}
         />
 
-        <div className="flex flex-1 flex-col">
-          <div className="flex items-center gap-2 border-b border-[#333] bg-[#252526] px-4 py-2">
+        <div className="flex flex-1 flex-col bg-gray-50">
+          <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-6 py-3 shadow-sm">
             <Button
               onClick={saveFile}
               size="sm"
               variant="ghost"
-              className="text-[#ccc] hover:bg-[#333] hover:text-white"
+              className="text-gray-700 hover:bg-gray-100 rounded-lg"
             >
               <Save className="mr-2 h-4 w-4" />
               Save
@@ -224,15 +224,15 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
               onClick={runCode}
               size="sm"
               disabled={isRunning}
-              className="bg-[#0e639c] hover:bg-[#1177bb]"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
             >
               <Play className="mr-2 h-4 w-4" />
-              {isRunning ? 'Running...' : 'Run Code'}
+              {isRunning ? 'Running...' : 'Run'}
             </Button>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="ml-auto rounded border border-[#333] bg-[#3c3c3c] px-3 py-1 text-sm text-[#ccc]"
+              className="ml-auto rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             >
               <option value="javascript">JavaScript</option>
               <option value="typescript">TypeScript</option>
@@ -248,20 +248,26 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           </div>
 
           <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1">
-              <CodeEditor
-                value={code}
-                language={language}
-                onChange={setCode}
-              />
+            <div className="flex-1 p-4">
+              <div className="h-full rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
+                <CodeEditor
+                  value={code}
+                  language={language}
+                  onChange={setCode}
+                />
+              </div>
             </div>
-            <div className="w-96 border-l border-[#333]">
-              <OutputPanel output={output} />
+            <div className="w-96 px-4 py-4">
+              <div className="h-full rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
+                <OutputPanel output={output} />
+              </div>
             </div>
           </div>
 
-          <div className="h-48 border-t border-[#333]">
-            <Terminal output={output} onClear={() => setOutput('')} />
+          <div className="h-56 px-4 pb-4">
+            <div className="h-full rounded-lg overflow-hidden shadow-md border border-gray-200 bg-white">
+              <Terminal output={output} onClear={() => setOutput('')} />
+            </div>
           </div>
         </div>
       </div>

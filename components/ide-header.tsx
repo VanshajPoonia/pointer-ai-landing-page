@@ -25,14 +25,14 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
   }
 
   return (
-    <div className="flex h-12 items-center justify-between border-b border-[#333] bg-[#323233] px-4">
-      <div className="flex items-center gap-4">
-        <h1 className="text-lg font-bold text-white">Code IDE</h1>
+    <div className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
+      <div className="flex items-center gap-6">
+        <h1 className="text-xl font-medium text-gray-900">CodeIDE</h1>
         <Button
           onClick={onNewFile}
           size="sm"
           variant="ghost"
-          className="text-[#ccc] hover:bg-[#3e3e42] hover:text-white"
+          className="text-gray-700 hover:bg-gray-100 rounded-lg"
         >
           <FilePlus className="mr-2 h-4 w-4" />
           New File
@@ -44,47 +44,48 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
           <Link href="/admin">
             <Button
               size="sm"
-              className="bg-yellow-500 text-black hover:bg-yellow-600"
+              className="bg-amber-500 text-white hover:bg-amber-600 rounded-lg shadow-sm"
             >
               <Crown className="mr-2 h-4 w-4" />
-              Admin Dashboard
+              Admin
             </Button>
           </Link>
         )}
         
-        <div className="text-sm text-[#ccc]">
+        <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5 text-sm">
           {isAdmin ? (
-            <span className="text-yellow-400">Admin - Unlimited</span>
+            <span className="font-medium text-amber-600">Admin • Unlimited</span>
           ) : isPaid ? (
-            <span className="text-green-400">Pro Plan</span>
+            <span className="font-medium text-green-600">Pro Plan</span>
           ) : (
-            <span>
-              {executions}/100 executions
+            <span className="text-gray-700">
+              <span className="font-medium">{executions}</span>
+              <span className="text-gray-500">/100</span>
               {executions >= 100 && (
-                <span className="ml-2 text-red-400">(Limit reached)</span>
+                <span className="ml-2 text-red-600 font-medium">(Limit reached)</span>
               )}
             </span>
           )}
         </div>
 
-        {!isPaid && (
+        {!isPaid && !isAdmin && (
           <Button
             onClick={() => window.open('https://buymeacoffee.com/yourhandle', '_blank')}
             size="sm"
-            className="bg-[#FFDD00] text-black hover:bg-[#FFDD00]/90"
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
           >
             <Coffee className="mr-2 h-4 w-4" />
             Upgrade
           </Button>
         )}
 
-        <div className="text-sm text-[#ccc]">{user.email}</div>
+        <div className="text-sm text-gray-600">{user.email}</div>
 
         <Button
           onClick={handleSignOut}
           size="sm"
           variant="ghost"
-          className="text-[#ccc] hover:bg-[#3e3e42] hover:text-white"
+          className="text-gray-700 hover:bg-gray-100 rounded-lg"
         >
           <LogOut className="h-4 w-4" />
         </Button>
