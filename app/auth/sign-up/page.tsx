@@ -1,5 +1,7 @@
 'use client'
 
+import React from "react"
+
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,11 +72,13 @@ export default function Page() {
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
-                      type="email"
+                      type="text"
                       placeholder="m@example.com"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
+                      title="Please enter a valid email address"
                     />
                   </div>
                   <div className="grid gap-2">
