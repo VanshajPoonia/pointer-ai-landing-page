@@ -11,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/lib/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu"
 
 interface FileExplorerProps {
   nodes: Record<string, FileNode>
