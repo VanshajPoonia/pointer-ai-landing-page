@@ -5,8 +5,12 @@ import React from "react"
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 
+import { FileSystemState, FileNode, getNodePath, findNodeByPath } from '@/lib/file-system'
+
 interface TerminalProps {
   onClear: () => void
+  fileSystem: FileSystemState
+  onUpdateFileSystem: (fs: FileSystemState) => void
 }
 
 interface TerminalLine {
@@ -14,7 +18,7 @@ interface TerminalLine {
   content: string
 }
 
-export function Terminal({ onClear }: TerminalProps) {
+export function Terminal({ onClear, fileSystem, onUpdateFileSystem }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [lines, setLines] = useState<TerminalLine[]>([
@@ -25,14 +29,12 @@ export function Terminal({ onClear }: TerminalProps) {
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [currentCommand, setCurrentCommand] = useState('')
-  const [currentDir, setCurrentDir] = useState('~')
-  const [fileSystem, setFileSystem] = useState<Record<string, string[]>>({
-    '~': ['project', 'documents', 'downloads'],
-    '~/project': ['src', 'package.json', 'README.md'],
-    '~/project/src': ['index.js', 'app.js', 'utils.js'],
-    '~/documents': ['notes.txt', 'todo.md'],
-    '~/downloads': [],
-  })
+  const [currentDir, setCurrentDir] = useState('root')
+  const [currentNodeId, setCurrentNodeId] = useState('root') // Declare currentNodeId
+
+  const setFileSystem = (fs: FileSystemState) => {
+    onUpdateFileSystem(fs)
+  }
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -44,22 +46,25 @@ export function Terminal({ onClear }: TerminalProps) {
     const parts = command.trim().split(' ')
     const cmd = parts[0]
     const args = parts.slice(1)
-
-    setLines(prev => [...prev, { type: 'command', content: `${currentDir} $ ${command}` }])
+    
+    const currentPath = getNodePath(fileSystem.nodes, currentNodeId)
+    setLines(prev => [...prev, { type: 'command', content: `${currentPath} $ ${command}` }])
 
     let output = ''
+    const currentNode = fileSystem.nodes[currentNodeId]
 
     switch (cmd) {
       case 'help':
         output = `Available commands:
   ls              - List files and directories
-  cd <dir>        - Change directory
+  cd <dir>        - Change directory  
   pwd             - Print working directory
   cat <file>      - Display file contents
+  tree            - Show directory tree
   echo <text>     - Print text
   mkdir <dir>     - Create directory
   touch <file>    - Create file
-  rm <file>       - Remove file
+  rm <file/dir>   - Remove file or directory
   clear           - Clear terminal
   date            - Show current date/time
   whoami          - Display current user
@@ -68,30 +73,46 @@ export function Terminal({ onClear }: TerminalProps) {
         break
 
       case 'ls':
-        const items = fileSystem[currentDir] || []
-        output = items.length > 0 ? items.join('  ') : 'Directory is empty'
+        if (currentNode?.type === 'folder' && currentNode.children) {
+          const items = currentNode.children
+            .map(childId => {
+              const child = fileSystem.nodes[childId]
+              return child ? (child.type === 'folder' ? child.name + '/' : child.name) : ''
+            })
+            .filter(Boolean)
+          output = items.length > 0 ? items.join('  ') : 'Directory is empty'
+        } else {
+          output = 'Not a directory'
+        }
         break
 
       case 'pwd':
-        output = currentDir
+        output = currentPath
         break
 
       case 'cd':
-        if (!args[0]) {
-          setCurrentDir('~')
+        if (!args[0] || args[0] === '~') {
+          setCurrentNodeId('root')
           output = ''
         } else if (args[0] === '..') {
-          const parts = currentDir.split('/')
-          parts.pop()
-          setCurrentDir(parts.join('/') || '~')
+          if (currentNode?.parentId) {
+            setCurrentNodeId(currentNode.parentId)
+          }
           output = ''
         } else {
-          const newDir = args[0].startsWith('~') ? args[0] : `${currentDir}/${args[0]}`
-          if (fileSystem[newDir]) {
-            setCurrentDir(newDir)
-            output = ''
+          if (currentNode?.type === 'folder' && currentNode.children) {
+            const childId = currentNode.children.find(id => 
+              fileSystem.nodes[id]?.name === args[0]
+            )
+            const child = childId ? fileSystem.nodes[childId] : null
+            if (child && child.type === 'folder') {
+              setCurrentNodeId(childId!)
+              output = ''
+            } else {
+              output = `cd: ${args[0]}: No such directory`
+            }
           } else {
-            output = `cd: ${args[0]}: No such file or directory`
+            output = 'Not in a directory'
           }
         }
         break
@@ -99,14 +120,43 @@ export function Terminal({ onClear }: TerminalProps) {
       case 'cat':
         if (!args[0]) {
           output = 'cat: missing file operand'
-        } else {
-          const items = fileSystem[currentDir] || []
-          if (items.includes(args[0])) {
-            output = `Contents of ${args[0]}:\n// Sample file content\nconsole.log('Hello from ${args[0]}');`
+        } else if (currentNode?.type === 'folder' && currentNode.children) {
+          const fileId = currentNode.children.find(id => fileSystem.nodes[id]?.name === args[0])
+          const file = fileId ? fileSystem.nodes[fileId] : null
+          if (file && file.type === 'file') {
+            output = file.content || '(empty file)'
           } else {
-            output = `cat: ${args[0]}: No such file or directory`
+            output = `cat: ${args[0]}: No such file`
           }
         }
+        break
+
+      case 'tree':
+        const buildTree = (nodeId: string, prefix: string = '', isLast: boolean = true): string[] => {
+          const node = fileSystem.nodes[nodeId]
+          if (!node) return []
+          
+          const lines: string[] = []
+          const connector = isLast ? '└── ' : '├── '
+          const icon = node.type === 'folder' ? '📁 ' : '📄 '
+          
+          if (nodeId !== 'root') {
+            lines.push(prefix + connector + icon + node.name)
+          }
+          
+          if (node.type === 'folder' && node.children) {
+            const newPrefix = prefix + (isLast ? '    ' : '│   ')
+            node.children.forEach((childId, index) => {
+              const isLastChild = index === node.children!.length - 1
+              lines.push(...buildTree(childId, newPrefix, isLastChild))
+            })
+          }
+          
+          return lines
+        }
+        
+        const treeOutput = buildTree(currentNodeId)
+        output = treeOutput.length > 0 ? treeOutput.join('\n') : 'Empty directory'
         break
 
       case 'echo':
@@ -116,13 +166,27 @@ export function Terminal({ onClear }: TerminalProps) {
       case 'mkdir':
         if (!args[0]) {
           output = 'mkdir: missing operand'
-        } else {
-          const items = fileSystem[currentDir] || []
-          if (!items.includes(args[0])) {
-            setFileSystem({
+        } else if (currentNode?.type === 'folder') {
+          const exists = currentNode.children?.some(id => fileSystem.nodes[id]?.name === args[0])
+          if (!exists) {
+            const newFolderId = `folder-${Date.now()}`
+            const newFolder: FileNode = {
+              id: newFolderId,
+              name: args[0],
+              type: 'folder',
+              children: [],
+              parentId: currentNodeId,
+            }
+            onUpdateFileSystem({
               ...fileSystem,
-              [currentDir]: [...items, args[0]],
-              [`${currentDir}/${args[0]}`]: [],
+              nodes: {
+                ...fileSystem.nodes,
+                [newFolderId]: newFolder,
+                [currentNodeId]: {
+                  ...currentNode,
+                  children: [...(currentNode.children || []), newFolderId],
+                },
+              },
             })
             output = ''
           } else {
@@ -134,12 +198,41 @@ export function Terminal({ onClear }: TerminalProps) {
       case 'touch':
         if (!args[0]) {
           output = 'touch: missing file operand'
-        } else {
-          const items = fileSystem[currentDir] || []
-          if (!items.includes(args[0])) {
-            setFileSystem({
+        } else if (currentNode?.type === 'folder') {
+          const exists = currentNode.children?.some(id => fileSystem.nodes[id]?.name === args[0])
+          if (!exists) {
+            const newFileId = `file-${Date.now()}`
+            const extension = args[0].split('.').pop() || 'txt'
+            const languageMap: Record<string, string> = {
+              js: 'javascript',
+              ts: 'typescript',
+              py: 'python',
+              java: 'java',
+              cpp: 'cpp',
+              c: 'c',
+              rs: 'rust',
+              go: 'go',
+              rb: 'ruby',
+              php: 'php',
+            }
+            const newFile: FileNode = {
+              id: newFileId,
+              name: args[0],
+              type: 'file',
+              content: '',
+              language: languageMap[extension] || 'plaintext',
+              parentId: currentNodeId,
+            }
+            onUpdateFileSystem({
               ...fileSystem,
-              [currentDir]: [...items, args[0]],
+              nodes: {
+                ...fileSystem.nodes,
+                [newFileId]: newFile,
+                [currentNodeId]: {
+                  ...currentNode,
+                  children: [...(currentNode.children || []), newFileId],
+                },
+              },
             })
             output = ''
           }
@@ -149,12 +242,18 @@ export function Terminal({ onClear }: TerminalProps) {
       case 'rm':
         if (!args[0]) {
           output = 'rm: missing operand'
-        } else {
-          const items = fileSystem[currentDir] || []
-          if (items.includes(args[0])) {
-            setFileSystem({
+        } else if (currentNode?.type === 'folder' && currentNode.children) {
+          const targetId = currentNode.children.find(id => fileSystem.nodes[id]?.name === args[0])
+          if (targetId) {
+            const newNodes = { ...fileSystem.nodes }
+            delete newNodes[targetId]
+            newNodes[currentNodeId] = {
+              ...currentNode,
+              children: currentNode.children.filter(id => id !== targetId),
+            }
+            onUpdateFileSystem({
               ...fileSystem,
-              [currentDir]: items.filter(item => item !== args[0]),
+              nodes: newNodes,
             })
             output = ''
           } else {
@@ -188,7 +287,7 @@ export function Terminal({ onClear }: TerminalProps) {
     }
 
     if (output) {
-      setLines(prev => [...prev, { type: cmd === 'help' ? 'output' : 'output', content: output }])
+      setLines(prev => [...prev, { type: 'output', content: output }])
     }
   }
 
@@ -261,7 +360,7 @@ export function Terminal({ onClear }: TerminalProps) {
           </div>
         ))}
         <div className="flex items-center mt-1">
-          <span className="text-[#4ec9b0] mr-2">{currentDir} $</span>
+          <span className="text-[#4ec9b0] mr-2">{getNodePath(fileSystem.nodes, currentNodeId)} $</span>
           <input
             ref={inputRef}
             type="text"

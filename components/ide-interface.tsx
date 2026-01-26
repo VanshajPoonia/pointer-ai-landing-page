@@ -10,24 +10,15 @@ import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
 import { Play, Save, FileCode } from 'lucide-react'
-
-interface CodeFile {
-  id: string
-  name: string
-  language: string
-  content: string
-  user_id: string
-  created_at: string
-  updated_at: string
-}
+import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath } from '@/lib/file-system'
 
 interface IDEInterfaceProps {
   user: User
 }
 
 export function IDEInterface({ user }: IDEInterfaceProps) {
-  const [files, setFiles] = useState<CodeFile[]>([])
-  const [activeFile, setActiveFile] = useState<CodeFile | null>(null)
+  const [fileSystem, setFileSystem] = useState<FileSystemState>(createDefaultFileSystem())
+  const [activeFileId, setActiveFileId] = useState<string | null>('index-js')
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
@@ -35,13 +26,30 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [executions, setExecutions] = useState(0)
   const [isPaid, setIsPaid] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [files, setFiles] = useState<any[]>([])
+  const [activeFile, setActiveFile] = useState<any | null>(null)
 
   const supabase = createClient()
 
+  const createNewFile = () => {
+    // Function implementation here
+  }
+
+  const loadFiles = () => {
+    // Function implementation here
+  }
+
   useEffect(() => {
-    loadFiles()
     loadUserData()
-  }, [])
+    // Load active file content
+    if (activeFileId) {
+      const node = fileSystem.nodes[activeFileId]
+      if (node && node.type === 'file') {
+        setCode(node.content || '')
+        setLanguage(node.language || 'javascript')
+      }
+    }
+  }, [activeFileId])
 
   const loadUserData = async () => {
     const { data } = await supabase
@@ -57,64 +65,131 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
     }
   }
 
-  const loadFiles = async () => {
-    const { data } = await supabase
-      .from('code_snippets')
-      .select('*')
-      .order('updated_at', { ascending: false })
-
-    if (data) {
-      setFiles(data)
-      if (data.length > 0 && !activeFile) {
-        setActiveFile(data[0])
-        setCode(data[0].content)
-        setLanguage(data[0].language)
-      }
+  const handleSelectFile = (nodeId: string) => {
+    const node = fileSystem.nodes[nodeId]
+    if (node && node.type === 'file') {
+      setActiveFileId(nodeId)
+      setCode(node.content || '')
+      setLanguage(node.language || 'javascript')
     }
   }
 
-  const saveFile = async () => {
-    if (activeFile) {
-      await supabase
-        .from('code_snippets')
-        .update({ content: code, updated_at: new Date().toISOString() })
-        .eq('id', activeFile.id)
-    } else {
-      const { data } = await supabase
-        .from('code_snippets')
-        .insert({
-          name: `Untitled-${Date.now()}`,
-          language,
-          content: code,
-          user_id: user.id,
-        })
-        .select()
-        .single()
-
-      if (data) {
-        setActiveFile(data)
-      }
+  const handleCreateFile = (parentId: string) => {
+    const newFileId = `file-${Date.now()}`
+    const newFile: FileNode = {
+      id: newFileId,
+      name: 'untitled.js',
+      type: 'file',
+      content: '// Write your code here\n',
+      language: 'javascript',
+      parentId,
     }
-    loadFiles()
-  }
 
-  const createNewFile = async () => {
-    const { data } = await supabase
-      .from('code_snippets')
-      .insert({
-        name: `Untitled-${Date.now()}`,
-        language: 'javascript',
-        content: '// Write your code here\n',
-        user_id: user.id,
+    const parent = fileSystem.nodes[parentId]
+    if (parent && parent.type === 'folder') {
+      setFileSystem({
+        ...fileSystem,
+        nodes: {
+          ...fileSystem.nodes,
+          [newFileId]: newFile,
+          [parentId]: {
+            ...parent,
+            children: [...(parent.children || []), newFileId],
+          },
+        },
       })
-      .select()
-      .single()
+      setActiveFileId(newFileId)
+      setCode(newFile.content || '')
+      setLanguage(newFile.language || 'javascript')
+    }
+  }
 
-    if (data) {
-      setFiles([data, ...files])
-      setActiveFile(data)
-      setCode(data.content)
-      setLanguage(data.language)
+  const handleCreateFolder = (parentId: string) => {
+    const newFolderId = `folder-${Date.now()}`
+    const newFolder: FileNode = {
+      id: newFolderId,
+      name: 'new-folder',
+      type: 'folder',
+      children: [],
+      parentId,
+    }
+
+    const parent = fileSystem.nodes[parentId]
+    if (parent && parent.type === 'folder') {
+      setFileSystem({
+        ...fileSystem,
+        nodes: {
+          ...fileSystem.nodes,
+          [newFolderId]: newFolder,
+          [parentId]: {
+            ...parent,
+            children: [...(parent.children || []), newFolderId],
+          },
+        },
+      })
+    }
+  }
+
+  const handleDeleteNode = (nodeId: string) => {
+    const node = fileSystem.nodes[nodeId]
+    if (!node || !node.parentId) return
+
+    const parent = fileSystem.nodes[node.parentId]
+    if (!parent || parent.type !== 'folder') return
+
+    const newNodes = { ...fileSystem.nodes }
+    delete newNodes[nodeId]
+
+    // Remove from parent's children
+    newNodes[node.parentId] = {
+      ...parent,
+      children: parent.children?.filter(id => id !== nodeId) || [],
+    }
+
+    setFileSystem({
+      ...fileSystem,
+      nodes: newNodes,
+    })
+
+    // Clear active file if it was deleted
+    if (activeFileId === nodeId) {
+      setActiveFileId(null)
+      setCode('')
+    }
+  }
+
+  const handleRenameNode = (nodeId: string, newName: string) => {
+    const node = fileSystem.nodes[nodeId]
+    if (!node) return
+
+    setFileSystem({
+      ...fileSystem,
+      nodes: {
+        ...fileSystem.nodes,
+        [nodeId]: {
+          ...node,
+          name: newName,
+        },
+      },
+    })
+  }
+
+  const saveFile = () => {
+    if (activeFileId) {
+      const node = fileSystem.nodes[activeFileId]
+      if (node && node.type === 'file') {
+        setFileSystem({
+          ...fileSystem,
+          nodes: {
+            ...fileSystem.nodes,
+            [activeFileId]: {
+              ...node,
+              content: code,
+              language,
+            },
+          },
+        })
+      }
     }
   }
 
@@ -187,27 +262,20 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         executions={executions} 
         isPaid={isPaid}
         isAdmin={isAdmin}
-        onNewFile={createNewFile}
+        onNewFile={() => handleCreateFile('root')}
       />
       
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <FileExplorer
-          files={files}
-          activeFile={activeFile}
-          onSelectFile={(file) => {
-            setActiveFile(file)
-            setCode(file.content)
-            setLanguage(file.language)
-          }}
-          onDeleteFile={async (fileId) => {
-            await supabase.from('code_snippets').delete().eq('id', fileId)
-            loadFiles()
-            if (activeFile?.id === fileId) {
-              setActiveFile(null)
-              setCode('')
-            }
-          }}
+          nodes={fileSystem.nodes}
+          rootId={fileSystem.rootId}
+          activeFileId={activeFileId}
+          onSelectFile={handleSelectFile}
+          onCreateFile={handleCreateFile}
+          onCreateFolder={handleCreateFolder}
+          onDeleteNode={handleDeleteNode}
+          onRenameNode={handleRenameNode}
         />
 
         {/* Main Content */}
@@ -215,15 +283,15 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           {/* Tab bar with actions */}
           <div className="flex items-center justify-between h-[35px] bg-[#252526] border-b border-[#191919] px-2">
             <div className="flex items-center h-full">
-              {activeFile ? (
+              {activeFileId && fileSystem.nodes[activeFileId] ? (
                 <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
                   <FileCode className="h-4 w-4 text-[#519aba]" />
-                  <span>{activeFile.name}</span>
+                  <span>{fileSystem.nodes[activeFileId].name}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
                   <FileCode className="h-4 w-4 text-[#519aba]" />
-                  <span>Untitled</span>
+                  <span>No file selected</span>
                 </div>
               )}
             </div>
@@ -332,7 +400,11 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           {/* Bottom Panel - Terminal and Output */}
           <div className="h-[280px] border-t border-[#191919] flex">
             <div className="flex-[2] min-w-0">
-              <Terminal onClear={() => setOutput('')} />
+              <Terminal 
+                onClear={() => setOutput('')}
+                fileSystem={fileSystem}
+                onUpdateFileSystem={setFileSystem}
+              />
             </div>
             <div className="flex-1 min-w-[300px] border-l border-[#191919]">
               <OutputPanel output={output} />
