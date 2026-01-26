@@ -2,18 +2,20 @@
 
 import { User } from '@supabase/supabase-js'
 import { Button } from './ui/button'
-import { FilePlus, LogOut, Coffee } from 'lucide-react'
+import { FilePlus, LogOut, Coffee, Crown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface IDEHeaderProps {
   user: User
   executions: number
   isPaid: boolean
+  isAdmin: boolean
   onNewFile: () => void
 }
 
-export function IDEHeader({ user, executions, isPaid, onNewFile }: IDEHeaderProps) {
+export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEHeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -38,8 +40,22 @@ export function IDEHeader({ user, executions, isPaid, onNewFile }: IDEHeaderProp
       </div>
 
       <div className="flex items-center gap-4">
+        {isAdmin && (
+          <Link href="/admin">
+            <Button
+              size="sm"
+              className="bg-yellow-500 text-black hover:bg-yellow-600"
+            >
+              <Crown className="mr-2 h-4 w-4" />
+              Admin Dashboard
+            </Button>
+          </Link>
+        )}
+        
         <div className="text-sm text-[#ccc]">
-          {isPaid ? (
+          {isAdmin ? (
+            <span className="text-yellow-400">Admin - Unlimited</span>
+          ) : isPaid ? (
             <span className="text-green-400">Pro Plan</span>
           ) : (
             <span>

@@ -34,6 +34,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [isRunning, setIsRunning] = useState(false)
   const [executions, setExecutions] = useState(0)
   const [isPaid, setIsPaid] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const supabase = createClient()
 
@@ -45,13 +46,14 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const loadUserData = async () => {
     const { data } = await supabase
       .from('users')
-      .select('executions_count, is_paid')
+      .select('execution_count, is_paid, is_admin')
       .eq('id', user.id)
       .single()
 
     if (data) {
-      setExecutions(data.executions_count)
-      setIsPaid(data.is_paid)
+      setExecutions(data.execution_count || 0)
+      setIsPaid(data.is_paid || false)
+      setIsAdmin(data.is_admin || false)
     }
   }
 
@@ -117,7 +119,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   }
 
   const runCode = async () => {
-    if (!isPaid && executions >= 100) {
+    if (!isAdmin && !isPaid && executions >= 100) {
       setOutput('You have reached the free tier limit of 100 executions. Please upgrade to continue.')
       return
     }
@@ -185,6 +187,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         user={user} 
         executions={executions} 
         isPaid={isPaid}
+        isAdmin={isAdmin}
         onNewFile={createNewFile}
       />
       

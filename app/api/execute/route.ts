@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 const PISTON_API = 'https://emkc.org/api/v2/piston'
 
@@ -21,6 +22,34 @@ export async function POST(request: NextRequest) {
 
     if (!code) {
       return NextResponse.json({ error: 'No code provided' }, { status: 400 })
+    }
+
+    // Check authentication and usage limits
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user profile to check admin status and execution count
+    const { data: profile } = await supabase
+      .from('users')
+      .select('is_admin, is_paid, execution_count')
+      .eq('id', user.id)
+      .single()
+
+    // Check if user has executions remaining (skip for admins)
+    if (!profile?.is_admin && !profile?.is_paid && (profile?.execution_count || 0) >= 100) {
+      return NextResponse.json({ 
+        error: 'Execution limit reached. Please upgrade to continue.',
+        limit_reached: true 
+      }, { status: 403 })
+    }
+
+    // Increment execution count (only for non-admin users)
+    if (!profile?.is_admin) {
+      await supabase.rpc('increment_execution_count', { user_id: user.id })
     }
 
     const pistonLanguage = languageMap[language] || language
