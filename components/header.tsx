@@ -44,9 +44,14 @@ export function Header() {
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="https://vercel.com/home" target="_blank" rel="noopener noreferrer" className="hidden md:block">
+          <Link href="/auth/login" className="hidden md:block">
+            <Button variant="ghost" className="text-foreground hover:text-foreground/80 px-6 py-2 rounded-full font-medium">
+              Log In
+            </Button>
+          </Link>
+          <Link href="/auth/sign-up" className="hidden md:block">
             <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm">
-              Try for Free
+              Sign Up
             </Button>
           </Link>
           <Sheet>
@@ -71,11 +76,18 @@ export function Header() {
                     {item.name}
                   </Link>
                 ))}
-                <Link href="https://vercel.com/home" target="_blank" rel="noopener noreferrer" className="w-full mt-4">
-                  <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm">
-                    Try for Free
-                  </Button>
-                </Link>
+                <div className="flex flex-col gap-3 mt-4">
+                  <Link href="/auth/login" className="w-full">
+                    <Button variant="ghost" className="w-full text-foreground hover:text-foreground/80 px-6 py-2 rounded-full font-medium">
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/auth/sign-up" className="w-full">
+                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
               </nav>
             </SheetContent>
           </Sheet>

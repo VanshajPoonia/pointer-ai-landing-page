@@ -1,8 +1,23 @@
 import { updateSession } from '@/lib/supabase/proxy'
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  // Update session first
+  const response = await updateSession(request)
+  
+  // Check if accessing protected route
+  if (request.nextUrl.pathname.startsWith('/ide')) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      // Redirect to login if not authenticated
+      return NextResponse.redirect(new URL('/auth/login', request.url))
+    }
+  }
+  
+  return response
 }
 
 export const config = {
