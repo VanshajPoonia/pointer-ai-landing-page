@@ -1,5 +1,7 @@
 'use client'
 
+import React from "react"
+
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,11 +37,11 @@ export default function Page() {
         options: {
           emailRedirectTo:
             process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${window.location.origin}/protected`,
+            `${window.location.origin}/ide`,
         },
       })
       if (error) throw error
-      router.push('/protected')
+      router.push('/ide')
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {

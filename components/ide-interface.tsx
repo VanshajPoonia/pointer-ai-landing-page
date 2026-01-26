@@ -44,11 +44,18 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   }, [])
 
   const loadUserData = async () => {
-    const { data } = await supabase
+    console.log('[v0] Loading user data for:', user.id)
+    const { data, error } = await supabase
       .from('users')
       .select('free_executions_remaining, is_premium, is_admin')
       .eq('id', user.id)
       .single()
+
+    if (error) {
+      console.error('[v0] Error loading user data:', error)
+    }
+    
+    console.log('[v0] User data loaded:', data)
 
     if (data) {
       setExecutions(100 - (data.free_executions_remaining || 100))
@@ -171,8 +178,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         code,
       })
 
-      // Update execution count
-      await supabase.rpc('increment_executions', { user_id: user.id })
+      // Reload user data to get updated execution count
       loadUserData()
     } catch (error: any) {
       setOutput(`Error: ${error.message}`)
