@@ -10,7 +10,7 @@ import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
 import { Play, Save, FileCode } from 'lucide-react'
-import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath } from '@/lib/file-system'
+import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
 interface IDEInterfaceProps {
   user: User
@@ -18,7 +18,7 @@ interface IDEInterfaceProps {
 
 export function IDEInterface({ user }: IDEInterfaceProps) {
   const [fileSystem, setFileSystem] = useState<FileSystemState>(createDefaultFileSystem())
-  const [activeFileId, setActiveFileId] = useState<string | null>('index-js')
+  const [activeFileId, setActiveFileId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
@@ -26,18 +26,13 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [executions, setExecutions] = useState(0)
   const [isPaid, setIsPaid] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [files, setFiles] = useState<any[]>([])
-  const [activeFile, setActiveFile] = useState<any | null>(null)
 
   const supabase = createClient()
 
-  const createNewFile = () => {
-    // Function implementation here
-  }
-
-  const loadFiles = () => {
-    // Function implementation here
-  }
+  // Create initial file on first load
+  useEffect(() => {
+    createTemplateFile('javascript')
+  }, [])
 
   useEffect(() => {
     loadUserData()
@@ -46,10 +41,42 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       const node = fileSystem.nodes[activeFileId]
       if (node && node.type === 'file') {
         setCode(node.content || '')
-        setLanguage(node.language || 'javascript')
       }
     }
   }, [activeFileId])
+
+  const createTemplateFile = (lang: string) => {
+    const template = getLanguageTemplate(lang)
+    const newFileId = `file-${Date.now()}`
+    const newFile: FileNode = {
+      id: newFileId,
+      name: template.filename,
+      type: 'file',
+      content: template.content,
+      language: lang,
+      parentId: 'root',
+    }
+
+    setFileSystem(prev => ({
+      ...prev,
+      nodes: {
+        ...prev.nodes,
+        [newFileId]: newFile,
+        root: {
+          ...prev.nodes.root,
+          children: [...(prev.nodes.root.children || []), newFileId],
+        },
+      },
+    }))
+    setActiveFileId(newFileId)
+    setCode(template.content)
+    setLanguage(lang)
+  }
+
+  const handleLanguageChange = (newLanguage: string) => {
+    // Create a new template file for the selected language
+    createTemplateFile(newLanguage)
+  }
 
   const loadUserData = async () => {
     const { data } = await supabase
@@ -299,7 +326,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
             <div className="flex items-center gap-2">
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => handleLanguageChange(e.target.value)}
                 className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer"
               >
                 <optgroup label="Popular">
