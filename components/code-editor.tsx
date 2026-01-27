@@ -97,6 +97,27 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
           lineNumbersMinChars: 4,
           padding: { top: 16, bottom: 16 },
           automaticLayout: true,
+          // Enable all keyboard shortcuts
+          quickSuggestions: true,
+          acceptSuggestionOnEnter: 'on',
+          formatOnPaste: true,
+          formatOnType: true,
+          autoIndent: 'full',
+          bracketPairColorization: { enabled: true },
+          suggest: {
+            showKeywords: true,
+            showSnippets: true,
+          },
+          // Enable multi-cursor and other advanced features
+          multiCursorModifier: 'ctrlCmd',
+          snippetSuggestions: 'top',
+          // Allow all keybindings
+          contextmenu: true,
+          find: {
+            addExtraSpaceOnTop: true,
+            autoFindInSelection: 'never',
+            seedSearchStringFromSelection: 'selection',
+          },
         }}
         loading={
           <div className="h-full w-full flex items-center justify-center bg-[#1e1e1e]">

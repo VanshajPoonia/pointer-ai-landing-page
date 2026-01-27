@@ -10,10 +10,24 @@ const languageMap: Record<string, string> = {
   java: 'java',
   cpp: 'c++',
   c: 'c',
+  csharp: 'csharp',
   go: 'go',
   rust: 'rust',
   php: 'php',
   ruby: 'ruby',
+  kotlin: 'kotlin',
+  swift: 'swift',
+  scala: 'scala',
+  perl: 'perl',
+  lua: 'lua',
+  r: 'r',
+  dart: 'dart',
+  bash: 'bash',
+  haskell: 'haskell',
+  groovy: 'groovy',
+  fsharp: 'fsharp',
+  clojure: 'clojure',
+  elixir: 'elixir',
 }
 
 export async function POST(request: NextRequest) {
@@ -59,17 +73,30 @@ export async function POST(request: NextRequest) {
 
     const pistonLanguage = languageMap[language] || language
 
+    console.log('[v0] Executing code for language:', pistonLanguage)
+
     // Get available runtimes
     const runtimesResponse = await fetch(`${PISTON_API}/runtimes`)
+    
+    if (!runtimesResponse.ok) {
+      console.log('[v0] Failed to fetch runtimes:', runtimesResponse.statusText)
+      return NextResponse.json(
+        { error: 'Failed to connect to code execution service' },
+        { status: 503 }
+      )
+    }
+    
     const runtimes = await runtimesResponse.json()
     
     const runtime = runtimes.find(
-      (r: any) => r.language === pistonLanguage
+      (r: any) => r.language === pistonLanguage || r.language.toLowerCase() === pistonLanguage.toLowerCase()
     )
 
     if (!runtime) {
+      console.log('[v0] Available runtimes:', runtimes.map((r: any) => r.language))
+      console.log('[v0] Requested language:', pistonLanguage)
       return NextResponse.json(
-        { error: `Language ${language} is not supported` },
+        { error: `Language ${language} (${pistonLanguage}) is not currently supported by the execution service` },
         { status: 400 }
       )
     }
@@ -93,14 +120,28 @@ export async function POST(request: NextRequest) {
 
     const result = await executeResponse.json()
 
+    console.log('[v0] Execution result:', JSON.stringify(result, null, 2))
+
     if (result.run) {
-      const output = result.run.output || result.run.stdout || ''
+      const stdout = result.run.stdout || ''
       const stderr = result.run.stderr || ''
+      const output = result.run.output || ''
+      
+      // Combine all output
+      let finalOutput = stdout || output
+      if (stderr) {
+        finalOutput = finalOutput ? `${finalOutput}\n\nErrors:\n${stderr}` : stderr
+      }
       
       return NextResponse.json({
-        output: stderr ? `${output}\n${stderr}` : output,
-        success: !stderr,
+        output: finalOutput || '(No output)',
+        success: !stderr || stderr.trim() === '',
       })
+    }
+
+    if (result.message) {
+      console.log('[v0] Execution error:', result.message)
+      return NextResponse.json({ error: result.message }, { status: 500 })
     }
 
     return NextResponse.json({ error: 'Execution failed' }, { status: 500 })
