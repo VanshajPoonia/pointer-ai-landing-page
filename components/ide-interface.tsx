@@ -12,7 +12,7 @@ import { Button } from './ui/button'
 import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare, Eye, EyeOff, GitBranch } from 'lucide-react'
 import { AIAssistantPanel } from './ai-assistant-panel'
 import { IssuesPanel } from './issues-panel'
-import { GitPanel } from './git-panel'
+import { SourceControlPanel } from './source-control-panel'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
@@ -468,7 +468,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
               onRenameNode={handleRenameNode}
             />
           ) : (
-            <GitPanel
+            <SourceControlPanel
               fileSystem={fileSystem}
               onFileSystemChange={setFileSystem}
             />
