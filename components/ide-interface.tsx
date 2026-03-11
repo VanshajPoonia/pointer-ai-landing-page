@@ -9,8 +9,9 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare } from 'lucide-react'
 import { AIAssistantPanel } from './ai-assistant-panel'
+import { IssuesPanel } from './issues-panel'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
@@ -28,10 +29,12 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [executions, setExecutions] = useState(0)
   const [isPaid, setIsPaid] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [showAIPanel, setShowAIPanel] = useState(false)
+  const [showAIPanel, setShowAIPanel] = useState(true) // Open by default
+  const [showIssuesPanel, setShowIssuesPanel] = useState(false)
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const editorRef = useRef<any>(null)
 
   const supabase = createClient()
 
@@ -513,12 +516,19 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                   <option value="pascal">Pascal</option>
                 </optgroup>
               </select>
-              {/* Issue count indicator */}
+              {/* Issue count indicator - clickable */}
               {codeIssues.length > 0 && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-[#5a1d1d] rounded text-[11px] text-[#f48771]">
+                <button
+                  onClick={() => setShowIssuesPanel(!showIssuesPanel)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] transition-colors ${
+                    showIssuesPanel 
+                      ? 'bg-red-500/30 text-red-400' 
+                      : 'bg-[#5a1d1d] text-[#f48771] hover:bg-[#6a2d2d]'
+                  }`}
+                >
                   <AlertCircle className="h-3 w-3" />
                   <span>{codeIssues.length} issue{codeIssues.length > 1 ? 's' : ''}</span>
-                </div>
+                </button>
               )}
               {isAnalyzing && (
                 <div className="flex items-center gap-1 px-2 py-1 text-[11px] text-[#808080]">
@@ -536,8 +546,8 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                     : 'text-[#cccccc] hover:bg-[#3c3c3c]'
                 }`}
               >
-                <Sparkles className="mr-1.5 h-4 w-4" />
-                AI
+                <MessageSquare className="mr-1.5 h-4 w-4" />
+                AI Chat
               </Button>
               <Button
                 onClick={saveFile}
@@ -568,6 +578,9 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                 language={language}
                 onChange={handleCodeChange}
                 issues={codeIssues}
+                onEditorReady={(editor) => {
+                  editorRef.current = editor
+                }}
               />
             </div>
             {/* AI Assistant Panel */}
@@ -588,6 +601,22 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
               }}
             />
           </div>
+
+          {/* Issues Panel */}
+          <IssuesPanel
+            issues={codeIssues}
+            isOpen={showIssuesPanel}
+            onClose={() => setShowIssuesPanel(false)}
+            onGoToLine={(line) => {
+              // Focus editor on the line with issue
+              if (editorRef.current) {
+                editorRef.current.revealLineInCenter(line)
+                editorRef.current.setPosition({ lineNumber: line, column: 1 })
+                editorRef.current.focus()
+              }
+              setShowIssuesPanel(false)
+            }}
+          />
 
           {/* Bottom Panel - Terminal and Output */}
           <div className="h-[280px] border-t border-[#191919] flex">

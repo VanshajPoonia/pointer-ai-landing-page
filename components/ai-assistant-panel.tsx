@@ -107,9 +107,10 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
             <div className="grid gap-2 w-full">
               {[
                 'Fix all bugs in my code',
-                'Explain this code',
-                'How can I improve this?',
-                'Optimize for performance',
+                'Generate a function that...',
+                'Explain this code line by line',
+                'Make this code better',
+                'Check if comments match code',
               ].map((suggestion) => (
                 <button
                   key={suggestion}

@@ -18,53 +18,56 @@ export async function POST(req: Request) {
   try {
     const result = await generateText({
       model: 'openai/gpt-4o-mini',
-      prompt: `You are an expert code analyzer for ${language}. Your job is to find ALL bugs, errors, and issues in code.
+      prompt: `You are an expert code analyzer for ${language}. Analyze the code and find ALL issues.
 
-CRITICAL - You MUST check for these issues:
+## ISSUE TYPES TO CHECK (in order of importance):
 
-1. **TYPOS IN FUNCTION/METHOD NAMES** (MOST IMPORTANT):
-   - "console.lg" should be "console.log" (JavaScript)
-   - "console.lgo" should be "console.log"
-   - "prnit" should be "print" (Python)
-   - "pirnt" should be "print"
-   - "documnet" should be "document"
-   - Any misspelled built-in function or method names
+### 1. TYPOS IN FUNCTION/METHOD NAMES [severity: error]
+Examples of typos to catch:
+- "console.lg" -> "console.log"
+- "console.lgo" -> "console.log"  
+- "prnit" -> "print"
+- "documnet" -> "document"
+- "lenght" -> "length"
+- "fucntion" -> "function"
+- ANY misspelled function, method, or property name
 
-2. **COMMENT vs CODE MISMATCH**:
-   - If a comment says "print user input" but the code doesn't take any input, report it
-   - If a comment describes functionality that the code doesn't implement, report it
-   - If a comment says "calculate sum" but code calculates something else, report it
+### 2. COMMENT vs CODE MISMATCH [severity: warning]
+IMPORTANT: Read each comment carefully and check if the code below it actually does what the comment says.
+Examples:
+- Comment says "// get user input" but code doesn't use prompt(), readline(), or any input function -> REPORT IT
+- Comment says "// calculate sum" but code calculates product -> REPORT IT  
+- Comment says "// print hello world" but code prints something else -> REPORT IT
+- Comment says "// loop through array" but there's no loop -> REPORT IT
+- Comment describes one thing but code does something completely different -> REPORT IT
 
-3. **SYNTAX ERRORS**:
-   - Missing brackets, parentheses, semicolons
-   - Unclosed strings or quotes
-   - Invalid syntax for the language
+### 3. SYNTAX ERRORS [severity: error]
+- Missing brackets, parentheses, semicolons
+- Unclosed strings or quotes
+- Invalid syntax
 
-4. **UNDEFINED REFERENCES**:
-   - Using variables before declaring them
-   - Calling functions that don't exist
-   - Accessing properties on undefined objects
+### 4. UNDEFINED REFERENCES [severity: error]
+- Variables used before declaration
+- Functions that don't exist
+- Accessing undefined properties
 
-5. **LOGIC ERRORS**:
-   - Infinite loops
-   - Off-by-one errors
-   - Incorrect conditionals
+### 5. LOGIC ERRORS [severity: warning]
+- Infinite loops
+- Dead code
+- Unreachable code
 
-Code with line numbers:
+## CODE TO ANALYZE:
 ${codeWithLineNumbers}
 
-RESPOND WITH ONLY THIS JSON FORMAT (no markdown, no extra text):
-{"issues":[{"line":6,"column":1,"endLine":6,"endColumn":12,"message":"Typo: 'console.lg' should be 'console.log'","severity":"error","suggestion":"Change 'console.lg' to 'console.log'"}]}
+## RESPONSE FORMAT (JSON only, no markdown):
+{"issues":[{"line":1,"column":1,"endLine":1,"endColumn":10,"message":"Description of issue","severity":"error","suggestion":"How to fix"}]}
 
-RULES:
-- line/endLine: Use the exact line numbers shown above (1-indexed)
-- column: Start position of the issue (1-indexed)
-- endColumn: End position of the issue
-- severity: "error" for bugs that will crash, "warning" for potential issues, "info" for suggestions
-- suggestion: How to fix it
-- If no issues: {"issues":[]}
-
-BE THOROUGH. Find every single typo and bug. Do not miss obvious errors like "console.lg".`,
+## RULES:
+- line numbers are 1-indexed (match the numbers shown)
+- severity: "error" (will crash), "warning" (potential issue), "info" (suggestion)
+- If no issues found: {"issues":[]}
+- Be THOROUGH - check every line, every comment
+- Do NOT miss typos like "console.lg"`,
     })
 
     // Parse the response

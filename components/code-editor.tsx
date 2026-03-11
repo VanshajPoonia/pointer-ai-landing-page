@@ -19,15 +19,19 @@ interface CodeEditorProps {
   language: string
   onChange: (value: string) => void
   issues?: CodeIssue[]
+  onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void
 }
 
-export function CodeEditor({ value, language, onChange, issues = [] }: CodeEditorProps) {
+export function CodeEditor({ value, language, onChange, issues = [], onEditorReady }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null)
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
+    if (onEditorReady) {
+      onEditorReady(editor)
+    }
   }
 
   // Update markers when issues change
