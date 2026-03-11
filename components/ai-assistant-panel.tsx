@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { Bot, Send, X, Sparkles, Loader2, Trash2 } from 'lucide-react'
+import { Bot, Send, X, Sparkles, Loader2, Trash2, Copy, Check, Play } from 'lucide-react'
 import { Button } from './ui/button'
 
 interface AIAssistantPanelProps {
@@ -11,10 +11,12 @@ interface AIAssistantPanelProps {
   language: string
   isOpen: boolean
   onClose: () => void
+  onCodeChange?: (newCode: string) => void
 }
 
-export function AIAssistantPanel({ code, language, isOpen, onClose }: AIAssistantPanelProps) {
+export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange }: AIAssistantPanelProps) {
   const [input, setInput] = useState('')
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -46,6 +48,18 @@ export function AIAssistantPanel({ code, language, isOpen, onClose }: AIAssistan
 
   const clearChat = () => {
     setMessages([])
+  }
+
+  const copyToClipboard = async (codeText: string) => {
+    await navigator.clipboard.writeText(codeText)
+    setCopiedCode(codeText)
+    setTimeout(() => setCopiedCode(null), 2000)
+  }
+
+  const applyCodeToEditor = (codeText: string) => {
+    if (onCodeChange) {
+      onCodeChange(codeText)
+    }
   }
 
   if (!isOpen) return null
@@ -92,10 +106,10 @@ export function AIAssistantPanel({ code, language, isOpen, onClose }: AIAssistan
             </p>
             <div className="grid gap-2 w-full">
               {[
+                'Fix all bugs in my code',
                 'Explain this code',
-                'Find bugs in my code',
                 'How can I improve this?',
-                'What does this error mean?',
+                'Optimize for performance',
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -147,14 +161,36 @@ export function AIAssistantPanel({ code, language, isOpen, onClose }: AIAssistan
                             </span>
                           )
                         }
-                        // Add code block
+                        // Add code block with action buttons
+                        const codeContent = match[2].trim()
                         parts.push(
-                          <pre
-                            key={`code-${match.index}`}
-                            className="mt-2 mb-2 p-2 bg-[#1e1e1e] rounded text-xs overflow-x-auto"
-                          >
-                            <code>{match[2]}</code>
-                          </pre>
+                          <div key={`code-${match.index}`} className="relative mt-2 mb-2 group">
+                            <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => copyToClipboard(codeContent)}
+                                className="p-1 bg-[#3c3c3c] hover:bg-[#4a4a4a] rounded text-[#cccccc]"
+                                title="Copy code"
+                              >
+                                {copiedCode === codeContent ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                              {onCodeChange && (
+                                <button
+                                  onClick={() => applyCodeToEditor(codeContent)}
+                                  className="p-1 bg-[#0e639c] hover:bg-[#1177bb] rounded text-white"
+                                  title="Apply to editor"
+                                >
+                                  <Play className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            <pre className="p-3 bg-[#1e1e1e] rounded text-xs overflow-x-auto">
+                              <code>{codeContent}</code>
+                            </pre>
+                          </div>
                         )
                         lastIndex = match.index + match[0].length
                       }

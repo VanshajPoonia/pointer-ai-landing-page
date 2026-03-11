@@ -502,6 +502,16 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
               language={language}
               isOpen={showAIPanel}
               onClose={() => setShowAIPanel(false)}
+              onCodeChange={(newCode) => {
+                setCode(newCode)
+                // Trigger analysis after AI changes code
+                if (analyzeTimeoutRef.current) {
+                  clearTimeout(analyzeTimeoutRef.current)
+                }
+                analyzeTimeoutRef.current = setTimeout(() => {
+                  analyzeCode(newCode, language)
+                }, 1000)
+              }}
             />
           </div>
 

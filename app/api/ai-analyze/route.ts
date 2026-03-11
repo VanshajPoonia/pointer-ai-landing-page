@@ -1,19 +1,6 @@
-import { generateText, Output } from 'ai'
-import { z } from 'zod'
+import { generateText } from 'ai'
 
 export const maxDuration = 30
-
-const issueSchema = z.object({
-  issues: z.array(z.object({
-    line: z.number(),
-    column: z.number(),
-    endLine: z.number(),
-    endColumn: z.number(),
-    message: z.string(),
-    severity: z.enum(['error', 'warning', 'info', 'hint']),
-    suggestion: z.string().nullable(),
-  })),
-})
 
 export async function POST(req: Request) {
   const { code, language }: { code: string; language: string } = await req.json()
@@ -22,37 +9,54 @@ export async function POST(req: Request) {
     return Response.json({ issues: [] })
   }
 
+  // Add line numbers for reference
+  const codeWithLineNumbers = code
+    .split('\n')
+    .map((line, i) => `${i + 1}: ${line}`)
+    .join('\n')
+
   try {
     const result = await generateText({
       model: 'openai/gpt-4o-mini',
-      output: Output.object({ schema: issueSchema }),
-      prompt: `Analyze the following ${language} code for bugs, errors, and potential issues. Focus on:
-- Syntax errors
-- Logic errors
-- Undefined variables
-- Type mismatches
-- Security vulnerabilities
-- Performance issues
-- Best practice violations
+      prompt: `You are a code analyzer. Analyze the following ${language} code for bugs, errors, and issues.
 
-Return a JSON object with an "issues" array. Each issue should have:
-- line: the line number (1-indexed)
-- column: the column number (1-indexed)
-- endLine: the ending line number
-- endColumn: the ending column number
-- message: a clear description of the issue
-- severity: "error", "warning", "info", or "hint"
-- suggestion: a suggested fix (or null if not applicable)
+IMPORTANT: Look for these specific issues:
+1. Typos in function/method names (e.g., "console.lg" instead of "console.log", "prnit" instead of "print")
+2. Syntax errors (missing brackets, semicolons, quotes)
+3. Undefined variables or functions
+4. Logic errors
+5. Best practice violations
 
-If the code is correct or you can't find any issues, return an empty issues array.
+Code with line numbers:
+${codeWithLineNumbers}
 
-Code to analyze:
-\`\`\`${language}
-${code}
-\`\`\``,
+Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation):
+{"issues":[{"line":1,"column":1,"endLine":1,"endColumn":10,"message":"description","severity":"error","suggestion":"fix"}]}
+
+Rules:
+- line/endLine: 1-indexed line numbers
+- column/endColumn: 1-indexed column positions  
+- severity: must be "error", "warning", "info", or "hint"
+- suggestion: can be null or a string with the fix
+- If no issues found, return: {"issues":[]}
+
+Find ALL issues in the code.`,
     })
 
-    return Response.json(result.object || { issues: [] })
+    // Parse the response
+    let issues = []
+    try {
+      const text = result.text.trim()
+      // Remove markdown code blocks if present
+      const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const parsed = JSON.parse(jsonText)
+      issues = parsed.issues || []
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', result.text)
+      issues = []
+    }
+
+    return Response.json({ issues })
   } catch (error) {
     console.error('AI analysis error:', error)
     return Response.json({ issues: [] })
