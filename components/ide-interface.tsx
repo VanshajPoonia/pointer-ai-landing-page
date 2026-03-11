@@ -9,7 +9,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare, Eye, EyeOff } from 'lucide-react'
 import { AIAssistantPanel } from './ai-assistant-panel'
 import { IssuesPanel } from './issues-panel'
 import { CodeIssue } from './code-editor'
@@ -33,6 +33,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [showIssuesPanel, setShowIssuesPanel] = useState(false)
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true) // Toggle for AI analysis
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
@@ -89,6 +90,10 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
 
   // Debounced code analysis
   const analyzeCode = async (codeToAnalyze: string, lang: string) => {
+    if (!aiAnalysisEnabled) {
+      return
+    }
+    
     if (!codeToAnalyze || codeToAnalyze.trim().length < 10) {
       setCodeIssues([])
       return
@@ -536,6 +541,30 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                   <span>Analyzing...</span>
                 </div>
               )}
+              {/* AI Analysis Toggle */}
+              <Button
+                onClick={() => {
+                  setAiAnalysisEnabled(!aiAnalysisEnabled)
+                  if (!aiAnalysisEnabled) {
+                    // Re-run analysis when enabling
+                    analyzeCode(code, language)
+                  } else {
+                    // Clear issues when disabling
+                    setCodeIssues([])
+                  }
+                }}
+                size="sm"
+                variant="ghost"
+                className={`h-[26px] px-2 text-[12px] rounded-[3px] ${
+                  aiAnalysisEnabled 
+                    ? 'text-amber-500 hover:bg-[#3c3c3c]' 
+                    : 'text-[#808080] hover:bg-[#3c3c3c]'
+                }`}
+                title={aiAnalysisEnabled ? 'Disable AI Analysis' : 'Enable AI Analysis'}
+              >
+                {aiAnalysisEnabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </Button>
+              {/* AI Chat Button */}
               <Button
                 onClick={() => setShowAIPanel(!showAIPanel)}
                 size="sm"
