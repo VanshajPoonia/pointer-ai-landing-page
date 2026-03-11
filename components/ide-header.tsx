@@ -28,10 +28,10 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile }: IDEH
     <div className="flex h-[48px] items-center justify-between bg-[#323233] border-b border-[#191919] px-4">
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gradient-to-br from-[#007acc] to-[#0e639c] flex items-center justify-center">
-            <span className="text-white text-xs font-bold">C</span>
+          <div className="w-6 h-6 rounded bg-gradient-to-br from-[#f59e0b] to-[#ea580c] flex items-center justify-center">
+            <span className="text-white text-xs font-bold">V</span>
           </div>
-          <h1 className="text-[13px] font-medium text-white">CodeIDE</h1>
+          <h1 className="text-[13px] font-medium text-white">Volt</h1>
         </div>
         <Button
           onClick={onNewFile}

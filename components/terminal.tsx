@@ -22,7 +22,7 @@ export function Terminal({ onClear, fileSystem, onUpdateFileSystem }: TerminalPr
   const terminalRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [lines, setLines] = useState<TerminalLine[]>([
-    { type: 'output', content: 'Welcome to CodeIDE Terminal v1.0' },
+    { type: 'output', content: 'Welcome to Volt Terminal v1.0' },
     { type: 'output', content: 'Type "help" for available commands' },
     { type: 'output', content: '' },
   ])
@@ -271,7 +271,7 @@ export function Terminal({ onClear, fileSystem, onUpdateFileSystem }: TerminalPr
         break
 
       case 'whoami':
-        output = 'codeide-user'
+        output = 'volt-user'
         break
 
       case 'history':
