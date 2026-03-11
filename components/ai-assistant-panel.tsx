@@ -84,7 +84,8 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
         transition: 'width 0.2s ease, opacity 0.2s ease',
         pointerEvents: isOpen ? 'auto' : 'none'
       }}
-        {/* Header */}
+    >
+      {/* Header */}
         <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919] shrink-0">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-amber-500" />
