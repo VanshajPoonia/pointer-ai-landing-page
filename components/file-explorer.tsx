@@ -3,9 +3,10 @@
 import React from "react"
 
 import { useState } from 'react'
-import { FileCode, Folder, FolderOpen, ChevronRight, ChevronDown, Plus, Trash2, Edit2, Download, MoreVertical } from 'lucide-react'
+import { ChevronRight, ChevronDown, Plus, Trash2, Edit2, Download, MoreVertical, FileCode, Folder } from 'lucide-react'
 import { Button } from './ui/button'
 import { FileNode, downloadFile } from '@/lib/file-system'
+import { FileIcon, FolderIcon } from './file-icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,11 +93,12 @@ export function FileExplorer({
                   <ChevronRight className="h-3.5 w-3.5 text-[#cccccc]" />
                 )}
               </span>
-              {isExpanded ? (
-                <FolderOpen className="h-4 w-4 text-[#dcb67a] flex-shrink-0 mr-1.5" />
-              ) : (
-                <Folder className="h-4 w-4 text-[#dcb67a] flex-shrink-0 mr-1.5" />
-              )}
+              <FolderIcon 
+                isOpen={isExpanded} 
+                folderName={node.name} 
+                size={16} 
+                className="flex-shrink-0 mr-1.5" 
+              />
               {isRenaming ? (
                 <input
                   type="text"
@@ -171,7 +173,7 @@ export function FileExplorer({
         style={{ paddingLeft: `${depth * 12 + 20}px` }}
       >
         <div className="flex items-center flex-1 min-w-0" onClick={() => onSelectFile(nodeId)}>
-          <FileCode className="h-4 w-4 text-[#519aba] flex-shrink-0 mr-1.5" />
+          <FileIcon filename={node.name} size={16} className="flex-shrink-0 mr-1.5" />
           {isRenaming ? (
             <input
               type="text"
