@@ -1,127 +1,176 @@
+"use client"
+
 import Image from "next/image"
+import { Quote, Code, Zap, Terminal, Star } from "lucide-react"
 
 const testimonials = [
   {
     quote:
-      "The real-time code suggestions from Pointer feel like having a senior engineer reviewing every line of code as you write. The accuracy of its recommendations has improved our overall code quality, reduced review time.",
-    name: "Annette Black",
-    company: "Sony",
+      "Volt has completely changed how I practice coding. I can test algorithms in Python, then immediately switch to JavaScript - all without leaving my browser. The instant execution is incredible.",
+    name: "Sarah Chen",
+    role: "Software Engineer",
+    company: "Google",
     avatar: "/images/avatars/annette-black.png",
-    type: "large-teal",
+    rating: 5,
+    language: "Python",
   },
   {
     quote:
-      "Integrating Pointer into our stack was smooth, and the MCP server connections saved us days of configuration work",
-    name: "Dianne Russell",
-    company: "McDonald's",
+      "As a CS professor, I use Volt for all my live coding demos. Students can follow along and run code instantly without any setup headaches.",
+    name: "Dr. James Miller",
+    role: "Professor",
+    company: "MIT",
     avatar: "/images/avatars/dianne-russell.png",
-    type: "small-dark",
+    rating: 5,
+    language: "Java",
   },
   {
     quote:
-      "Pointer’s multi-agent coding feature has been a game changer. We’re fixing complex bugs in hours instead of spending entire sprints on them.",
-    name: "Cameron Williamson",
-    company: "IBM",
+      "The built-in terminal makes Volt feel like a real development environment. I've used it for technical interviews and quick prototyping.",
+    name: "Alex Rodriguez",
+    role: "Full Stack Developer",
+    company: "Stripe",
     avatar: "/images/avatars/cameron-williamson.png",
-    type: "small-dark",
+    rating: 5,
+    language: "TypeScript",
   },
   {
     quote:
-      "We no longer juggle multiple tools. Pointer brought all our integrations together in one place, which simplified our entire workflow.",
-    name: "Robert Fox",
-    company: "MasterCard",
+      "60+ languages in one place! I switch between Rust, Go, and C++ daily for competitive programming. Volt handles them all perfectly.",
+    name: "Priya Sharma",
+    role: "Competitive Programmer",
+    company: "LeetCode Top 100",
     avatar: "/images/avatars/robert-fox.png",
-    type: "small-dark",
+    rating: 5,
+    language: "Rust",
   },
   {
     quote:
-      "We started with the free plan just to test it out, but within a week we upgraded to Pro. Now, we can’t imagine coding without it",
-    name: "Darlene Robertson",
-    company: "Ferrari",
+      "No more 'it works on my machine' excuses. I share Volt links with my team and everyone sees the same output instantly.",
+    name: "Marcus Johnson",
+    role: "Tech Lead",
+    company: "Shopify",
     avatar: "/images/avatars/darlene-robertson.png",
-    type: "small-dark",
+    rating: 5,
+    language: "Ruby",
   },
   {
     quote:
-      "Collaborative coding feels effortless now. With Pointer’s real-time previews, pair programming has become faster and more productive.",
-    name: "Cody Fisher",
-    company: "Apple",
+      "I learned Python entirely on Volt. The syntax highlighting and instant feedback made it so easy to experiment and learn.",
+    name: "Emma Wilson",
+    role: "Junior Developer",
+    company: "Bootcamp Graduate",
     avatar: "/images/avatars/cody-fisher.png",
-    type: "small-dark",
-  },
-  {
-    quote:
-      "Deploying on Vercel with Pointer was not just simple, it felt seamless. We went from coding to seeing our changes live in minutes without worrying about build pipelines or configuration issues.",
-    name: "Albert Flores",
-    company: "Louis Vuitton",
-    avatar: "/images/avatars/albert-flores.png",
-    type: "large-light",
+    rating: 5,
+    language: "Python",
   },
 ]
 
-const TestimonialCard = ({ quote, name, company, avatar, type }) => {
-  const isLargeCard = type.startsWith("large")
-  const avatarSize = isLargeCard ? 48 : 36
-  const avatarBorderRadius = isLargeCard ? "rounded-[41px]" : "rounded-[30.75px]"
-  const padding = isLargeCard ? "p-6" : "p-[30px]"
+const LanguageBadge = ({ language }: { language: string }) => {
+  const colors: Record<string, string> = {
+    Python: "bg-[#3776ab]/20 text-[#3776ab] border-[#3776ab]/30",
+    Java: "bg-[#f89820]/20 text-[#f89820] border-[#f89820]/30",
+    TypeScript: "bg-[#3178c6]/20 text-[#3178c6] border-[#3178c6]/30",
+    Rust: "bg-[#dea584]/20 text-[#dea584] border-[#dea584]/30",
+    Ruby: "bg-[#cc342d]/20 text-[#cc342d] border-[#cc342d]/30",
+  }
+  return (
+    <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${colors[language] || "bg-primary/20 text-primary border-primary/30"}`}>
+      {language}
+    </span>
+  )
+}
 
-  let cardClasses = `flex flex-col justify-between items-start overflow-hidden rounded-[10px] shadow-[0px_2px_4px_rgba(0,0,0,0.08)] relative ${padding}`
-  let quoteClasses = ""
-  let nameClasses = ""
-  let companyClasses = ""
-  let backgroundElements = null
-  let cardHeight = ""
-  const cardWidth = "w-full md:w-[384px]"
+const StarRating = ({ rating }: { rating: number }) => (
+  <div className="flex gap-0.5">
+    {[...Array(rating)].map((_, i) => (
+      <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+    ))}
+  </div>
+)
 
-  if (type === "large-teal") {
-    cardClasses += " bg-primary"
-    quoteClasses += " text-primary-foreground text-2xl font-medium leading-8"
-    nameClasses += " text-primary-foreground text-base font-normal leading-6"
-    companyClasses += " text-primary-foreground/60 text-base font-normal leading-6"
-    cardHeight = "h-[502px]"
-    backgroundElements = (
-      <div
-        className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/images/large-card-background.svg')", zIndex: 0 }}
-      />
+const TestimonialCard = ({ quote, name, role, company, avatar, rating, language, featured = false }: {
+  quote: string
+  name: string
+  role: string
+  company: string
+  avatar: string
+  rating: number
+  language: string
+  featured?: boolean
+}) => {
+  if (featured) {
+    return (
+      <div className="relative group">
+        {/* Animated gradient border */}
+        <div className="absolute -inset-[1px] bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-2xl opacity-75 blur-sm group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="relative flex flex-col justify-between p-8 bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl h-full min-h-[320px] overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-2xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-orange-500/10 to-transparent rounded-full blur-2xl" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <Quote className="w-8 h-8 text-amber-500/50" />
+              <LanguageBadge language={language} />
+            </div>
+            <p className="text-white text-xl font-medium leading-relaxed">{quote}</p>
+          </div>
+          
+          <div className="relative z-10 flex items-center justify-between mt-6 pt-6 border-t border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Image
+                  src={avatar}
+                  alt={name}
+                  width={48}
+                  height={48}
+                  className="rounded-full ring-2 ring-amber-500/50"
+                />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <Zap className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div>
+                <p className="text-white font-semibold">{name}</p>
+                <p className="text-white/60 text-sm">{role} at {company}</p>
+              </div>
+            </div>
+            <StarRating rating={rating} />
+          </div>
+        </div>
+      </div>
     )
-  } else if (type === "large-light") {
-    cardClasses += " bg-[rgba(231,236,235,0.12)]"
-    quoteClasses += " text-foreground text-2xl font-medium leading-8"
-    nameClasses += " text-foreground text-base font-normal leading-6"
-    companyClasses += " text-muted-foreground text-base font-normal leading-6"
-    cardHeight = "h-[502px]"
-    backgroundElements = (
-      <div
-        className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat opacity-20"
-        style={{ backgroundImage: "url('/images/large-card-background.svg')", zIndex: 0 }}
-      />
-    )
-  } else {
-    cardClasses += " bg-card outline outline-1 outline-border outline-offset-[-1px]"
-    quoteClasses += " text-foreground/80 text-[17px] font-normal leading-6"
-    nameClasses += " text-foreground text-sm font-normal leading-[22px]"
-    companyClasses += " text-muted-foreground text-sm font-normal leading-[22px]"
-    cardHeight = "h-[244px]"
   }
 
   return (
-    <div className={`${cardClasses} ${cardWidth} ${cardHeight}`}>
-      {backgroundElements}
-      <div className={`relative z-10 font-normal break-words ${quoteClasses}`}>{quote}</div>
-      <div className="relative z-10 flex justify-start items-center gap-3">
-        <Image
-          src={avatar || "/placeholder.svg"}
-          alt={`${name} avatar`}
-          width={avatarSize}
-          height={avatarSize}
-          className={`w-${avatarSize / 4} h-${avatarSize / 4} ${avatarBorderRadius}`}
-          style={{ border: "1px solid rgba(255, 255, 255, 0.08)" }}
-        />
-        <div className="flex flex-col justify-start items-start gap-0.5">
-          <div className={nameClasses}>{name}</div>
-          <div className={companyClasses}>{company}</div>
+    <div className="group relative flex flex-col justify-between p-6 bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 h-full">
+      {/* Hover glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <Quote className="w-5 h-5 text-primary/40" />
+          <LanguageBadge language={language} />
         </div>
+        <p className="text-foreground/80 text-[15px] leading-relaxed">{quote}</p>
+      </div>
+      
+      <div className="relative z-10 flex items-center justify-between mt-4 pt-4 border-t border-border/50">
+        <div className="flex items-center gap-2.5">
+          <Image
+            src={avatar}
+            alt={name}
+            width={36}
+            height={36}
+            className="rounded-full ring-1 ring-border"
+          />
+          <div>
+            <p className="text-foreground text-sm font-medium">{name}</p>
+            <p className="text-muted-foreground text-xs">{company}</p>
+          </div>
+        </div>
+        <StarRating rating={rating} />
       </div>
     </div>
   )
@@ -129,31 +178,60 @@ const TestimonialCard = ({ quote, name, company, avatar, type }) => {
 
 export function TestimonialGridSection() {
   return (
-    <section className="w-full px-5 overflow-hidden flex flex-col justify-start py-6 md:py-8 lg:py-14">
-      <div className="self-stretch py-6 md:py-8 lg:py-14 flex flex-col justify-center items-center gap-2">
-        <div className="flex flex-col justify-start items-center gap-4">
-          <h2 className="text-center text-foreground text-3xl md:text-4xl lg:text-[40px] font-semibold leading-tight md:leading-tight lg:leading-[40px]">
-            Coding made effortless
-          </h2>
-          <p className="self-stretch text-center text-muted-foreground text-sm md:text-sm lg:text-base font-medium leading-[18.20px] md:leading-relaxed lg:leading-relaxed">
-            {"Hear how developers ship products faster, collaborate seamlessly,"} <br />{" "}
-            {"and build with confidence using Pointer's powerful AI tools"}
-          </p>
+    <section className="w-full px-5 overflow-hidden py-12 md:py-16 lg:py-24">
+      {/* Section header */}
+      <div className="max-w-3xl mx-auto text-center mb-12 md:mb-16">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6">
+          <Terminal className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-primary">Loved by 50,000+ developers</span>
         </div>
+        <h2 className="text-foreground text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4">
+          Developers Love Volt
+        </h2>
+        <p className="text-muted-foreground text-lg md:text-xl leading-relaxed">
+          From students to senior engineers, see why developers choose Volt for instant code execution
+        </p>
       </div>
-      <div className="w-full pt-0.5 pb-4 md:pb-6 lg:pb-10 flex flex-col md:flex-row justify-center items-start gap-4 md:gap-4 lg:gap-6 max-w-[1100px] mx-auto">
-        <div className="flex-1 flex flex-col justify-start items-start gap-4 md:gap-4 lg:gap-6">
-          <TestimonialCard {...testimonials[0]} />
-          <TestimonialCard {...testimonials[1]} />
-        </div>
-        <div className="flex-1 flex flex-col justify-start items-start gap-4 md:gap-4 lg:gap-6">
-          <TestimonialCard {...testimonials[2]} />
+
+      {/* Testimonials grid */}
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Featured testimonial - spans 2 columns on large screens */}
+          <div className="md:col-span-2 lg:col-span-2">
+            <TestimonialCard {...testimonials[0]} featured />
+          </div>
+          
+          {/* Regular testimonials */}
+          <div className="space-y-6">
+            <TestimonialCard {...testimonials[1]} />
+            <TestimonialCard {...testimonials[2]} />
+          </div>
+          
           <TestimonialCard {...testimonials[3]} />
           <TestimonialCard {...testimonials[4]} />
-        </div>
-        <div className="flex-1 flex flex-col justify-start items-start gap-4 md:gap-4 lg:gap-6">
           <TestimonialCard {...testimonials[5]} />
-          <TestimonialCard {...testimonials[6]} />
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      <div className="max-w-4xl mx-auto mt-16 p-6 md:p-8 rounded-2xl bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-bold text-foreground">60+</div>
+            <div className="text-sm text-muted-foreground mt-1">Languages</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-bold text-foreground">50K+</div>
+            <div className="text-sm text-muted-foreground mt-1">Developers</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-bold text-foreground">1M+</div>
+            <div className="text-sm text-muted-foreground mt-1">Code Runs</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-bold text-foreground">{"<"}1s</div>
+            <div className="text-sm text-muted-foreground mt-1">Execution Time</div>
+          </div>
         </div>
       </div>
     </section>
