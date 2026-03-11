@@ -3,9 +3,12 @@ import { generateText } from 'ai'
 export const maxDuration = 30
 
 export async function POST(req: Request) {
+  console.log('[v0] AI analyze API called')
   const { code, language }: { code: string; language: string } = await req.json()
+  console.log('[v0] Analyzing', language, 'code, length:', code?.length)
 
   if (!code || code.trim().length < 5) {
+    console.log('[v0] Code too short, skipping analysis')
     return Response.json({ issues: [] })
   }
 
@@ -18,41 +21,68 @@ export async function POST(req: Request) {
   try {
     const result = await generateText({
       model: 'openai/gpt-4o-mini',
-      prompt: `You are a code analyzer. Analyze the following ${language} code for bugs, errors, and issues.
+      prompt: `You are an expert code analyzer for ${language}. Your job is to find ALL bugs, errors, and issues in code.
 
-IMPORTANT: Look for these specific issues:
-1. Typos in function/method names (e.g., "console.lg" instead of "console.log", "prnit" instead of "print")
-2. Syntax errors (missing brackets, semicolons, quotes)
-3. Undefined variables or functions
-4. Logic errors
-5. Best practice violations
+CRITICAL - You MUST check for these issues:
+
+1. **TYPOS IN FUNCTION/METHOD NAMES** (MOST IMPORTANT):
+   - "console.lg" should be "console.log" (JavaScript)
+   - "console.lgo" should be "console.log"
+   - "prnit" should be "print" (Python)
+   - "pirnt" should be "print"
+   - "documnet" should be "document"
+   - Any misspelled built-in function or method names
+
+2. **COMMENT vs CODE MISMATCH**:
+   - If a comment says "print user input" but the code doesn't take any input, report it
+   - If a comment describes functionality that the code doesn't implement, report it
+   - If a comment says "calculate sum" but code calculates something else, report it
+
+3. **SYNTAX ERRORS**:
+   - Missing brackets, parentheses, semicolons
+   - Unclosed strings or quotes
+   - Invalid syntax for the language
+
+4. **UNDEFINED REFERENCES**:
+   - Using variables before declaring them
+   - Calling functions that don't exist
+   - Accessing properties on undefined objects
+
+5. **LOGIC ERRORS**:
+   - Infinite loops
+   - Off-by-one errors
+   - Incorrect conditionals
 
 Code with line numbers:
 ${codeWithLineNumbers}
 
-Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation):
-{"issues":[{"line":1,"column":1,"endLine":1,"endColumn":10,"message":"description","severity":"error","suggestion":"fix"}]}
+RESPOND WITH ONLY THIS JSON FORMAT (no markdown, no extra text):
+{"issues":[{"line":6,"column":1,"endLine":6,"endColumn":12,"message":"Typo: 'console.lg' should be 'console.log'","severity":"error","suggestion":"Change 'console.lg' to 'console.log'"}]}
 
-Rules:
-- line/endLine: 1-indexed line numbers
-- column/endColumn: 1-indexed column positions  
-- severity: must be "error", "warning", "info", or "hint"
-- suggestion: can be null or a string with the fix
-- If no issues found, return: {"issues":[]}
+RULES:
+- line/endLine: Use the exact line numbers shown above (1-indexed)
+- column: Start position of the issue (1-indexed)
+- endColumn: End position of the issue
+- severity: "error" for bugs that will crash, "warning" for potential issues, "info" for suggestions
+- suggestion: How to fix it
+- If no issues: {"issues":[]}
 
-Find ALL issues in the code.`,
+BE THOROUGH. Find every single typo and bug. Do not miss obvious errors like "console.lg".`,
     })
 
     // Parse the response
+    console.log('[v0] AI raw response:', result.text)
     let issues = []
     try {
       const text = result.text.trim()
       // Remove markdown code blocks if present
       const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      console.log('[v0] Cleaned JSON:', jsonText)
       const parsed = JSON.parse(jsonText)
       issues = parsed.issues || []
+      console.log('[v0] Parsed issues:', issues.length)
     } catch (parseError) {
-      console.error('Failed to parse AI response:', result.text)
+      console.error('[v0] Failed to parse AI response:', result.text)
       issues = []
     }
 

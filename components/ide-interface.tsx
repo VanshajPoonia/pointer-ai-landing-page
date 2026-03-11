@@ -91,6 +91,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       return
     }
 
+    console.log('[v0] Starting AI analysis for', lang)
     setIsAnalyzing(true)
     try {
       const response = await fetch('/api/ai-analyze', {
@@ -99,9 +100,10 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         body: JSON.stringify({ code: codeToAnalyze, language: lang }),
       })
       const data = await response.json()
+      console.log('[v0] AI analysis response:', data)
       setCodeIssues(data.issues || [])
     } catch (error) {
-      console.error('Analysis error:', error)
+      console.error('[v0] Analysis error:', error)
       setCodeIssues([])
     } finally {
       setIsAnalyzing(false)
