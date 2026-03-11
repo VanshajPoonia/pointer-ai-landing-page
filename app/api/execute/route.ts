@@ -38,38 +38,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No code provided' }, { status: 400 })
     }
 
-    // Check authentication and usage limits
+    // Check authentication and usage limits (optional - allow guest execution)
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get user profile to check admin status and execution count
-    const { data: profile } = await supabase
-      .from('users')
-      .select('is_admin, is_premium, free_executions_remaining')
-      .eq('id', user.id)
-      .single()
-
-    // Check if user has executions remaining (skip for admins)
-    if (!profile?.is_admin && !profile?.is_premium && (profile?.free_executions_remaining || 0) <= 0) {
-      return NextResponse.json({ 
-        error: 'Execution limit reached. Please upgrade to continue.',
-        limit_reached: true 
-      }, { status: 403 })
-    }
-
-    // Decrement free executions (only for non-admin, non-premium users)
-    if (!profile?.is_admin && !profile?.is_premium) {
-      await supabase
+    // If user is logged in, check their limits
+    if (user) {
+      // Get user profile to check admin status and execution count
+      const { data: profile } = await supabase
         .from('users')
-        .update({ 
-          free_executions_remaining: (profile?.free_executions_remaining || 100) - 1 
-        })
+        .select('is_admin, is_premium, free_executions_remaining')
         .eq('id', user.id)
+        .single()
+
+      // Check if user has executions remaining (skip for admins)
+      if (!profile?.is_admin && !profile?.is_premium && (profile?.free_executions_remaining || 0) <= 0) {
+        return NextResponse.json({ 
+          error: 'Execution limit reached. Please upgrade to continue.',
+          limit_reached: true 
+        }, { status: 403 })
+      }
+
+      // Decrement free executions (only for non-admin, non-premium users)
+      if (!profile?.is_admin && !profile?.is_premium) {
+        await supabase
+          .from('users')
+          .update({ 
+            free_executions_remaining: (profile?.free_executions_remaining || 100) - 1 
+          })
+          .eq('id', user.id)
+      }
     }
+    // Guest users can execute code without limits (for now - can add IP-based limits later)
 
     const pistonLanguage = languageMap[language] || language
 
