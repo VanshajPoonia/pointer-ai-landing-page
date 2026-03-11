@@ -412,6 +412,16 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
 
         const result = await response.json()
         
+        if (response.status === 401) {
+          setOutput('Please log in to run code. Go to /auth/login to sign in.')
+          return
+        }
+        
+        if (response.status === 403 && result.limit_reached) {
+          setOutput('You have reached the free tier limit of 100 executions. Please upgrade to continue.')
+          return
+        }
+        
         if (result.error) {
           setOutput(`Error: ${result.error}`)
         } else {
