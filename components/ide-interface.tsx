@@ -9,7 +9,15 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare, Eye, EyeOff, GitBranch } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from './ui/dropdown-menu'
 import { AIAssistantPanel } from './ai-assistant-panel'
 import { IssuesPanel } from './issues-panel'
 import { SourceControlPanel } from './source-control-panel'
@@ -36,6 +44,8 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true) // Toggle for AI analysis
+  const [commentCheckEnabled, setCommentCheckEnabled] = useState(true) // Toggle for comment/code mismatch
+  const [ignoredIssues, setIgnoredIssues] = useState<Set<string>>(new Set())
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
@@ -106,15 +116,29 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       const response = await fetch('/api/ai-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeToAnalyze, language: lang }),
+        body: JSON.stringify({ 
+          code: codeToAnalyze, 
+          language: lang,
+          checkComments: commentCheckEnabled 
+        }),
       })
       const data = await response.json()
-      setCodeIssues(data.issues || [])
+      // Add unique IDs to issues for ignore functionality
+      const issuesWithIds = (data.issues || []).map((issue: CodeIssue, index: number) => ({
+        ...issue,
+        id: `${issue.line}-${issue.column}-${issue.message.slice(0, 20)}-${index}`
+      }))
+      setCodeIssues(issuesWithIds)
     } catch {
       setCodeIssues([])
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  // Handle ignoring a warning
+  const handleIgnoreIssue = (issueId: string) => {
+    setIgnoredIssues(prev => new Set([...prev, issueId]))
   }
 
   // Trigger analysis when code changes (debounced)
@@ -565,48 +589,94 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                 </optgroup>
               </select>
               {/* Issue count indicator - clickable */}
-              {codeIssues.length > 0 && (
-                <button
-                  onClick={() => setShowIssuesPanel(!showIssuesPanel)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] transition-colors ${
-                    showIssuesPanel 
-                      ? 'bg-red-500/30 text-red-400' 
-                      : 'bg-[#5a1d1d] text-[#f48771] hover:bg-[#6a2d2d]'
-                  }`}
-                >
-                  <AlertCircle className="h-3 w-3" />
-                  <span>{codeIssues.length} issue{codeIssues.length > 1 ? 's' : ''}</span>
-                </button>
-              )}
+              {(() => {
+                const visibleIssues = codeIssues.filter(i => !(i.id && ignoredIssues.has(i.id)))
+                const errorCount = visibleIssues.filter(i => i.severity === 'error').length
+                const warningCount = visibleIssues.filter(i => i.severity === 'warning').length
+                if (visibleIssues.length === 0) return null
+                return (
+                  <button
+                    onClick={() => setShowIssuesPanel(!showIssuesPanel)}
+                    className={`flex items-center gap-2 px-2 py-1 rounded text-[11px] transition-colors ${
+                      showIssuesPanel 
+                        ? 'bg-[#3c3c3c]' 
+                        : 'bg-[#2d2d2d] hover:bg-[#3c3c3c]'
+                    }`}
+                  >
+                    {errorCount > 0 && (
+                      <span className="flex items-center gap-1 text-red-400">
+                        <AlertCircle className="h-3 w-3" />
+                        {errorCount}
+                      </span>
+                    )}
+                    {warningCount > 0 && (
+                      <span className="flex items-center gap-1 text-yellow-400">
+                        <MessageSquareWarning className="h-3 w-3" />
+                        {warningCount}
+                      </span>
+                    )}
+                  </button>
+                )
+              })()}
               {isAnalyzing && (
                 <div className="flex items-center gap-1 px-2 py-1 text-[11px] text-[#808080]">
                   <Sparkles className="h-3 w-3 animate-pulse text-amber-500" />
                   <span>Analyzing...</span>
                 </div>
               )}
-              {/* AI Analysis Toggle */}
-              <Button
-                onClick={() => {
-                  setAiAnalysisEnabled(!aiAnalysisEnabled)
-                  if (!aiAnalysisEnabled) {
-                    // Re-run analysis when enabling
-                    analyzeCode(code, language)
-                  } else {
-                    // Clear issues when disabling
-                    setCodeIssues([])
-                  }
-                }}
-                size="sm"
-                variant="ghost"
-                className={`h-[26px] px-2 text-[12px] rounded-[3px] ${
-                  aiAnalysisEnabled 
-                    ? 'text-amber-500 hover:bg-[#3c3c3c]' 
-                    : 'text-[#808080] hover:bg-[#3c3c3c]'
-                }`}
-                title={aiAnalysisEnabled ? 'Disable AI Analysis' : 'Enable AI Analysis'}
-              >
-                {aiAnalysisEnabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </Button>
+              {/* AI Settings Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className={`h-[26px] px-2 text-[12px] rounded-[3px] ${
+                      aiAnalysisEnabled 
+                        ? 'text-amber-500 hover:bg-[#3c3c3c]' 
+                        : 'text-[#808080] hover:bg-[#3c3c3c]'
+                    }`}
+                    title="AI Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-[#252526] border-[#3c3c3c] min-w-[220px]">
+                  <DropdownMenuLabel className="text-[#cccccc] text-xs">AI Analysis Settings</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-[#3c3c3c]" />
+                  <DropdownMenuCheckboxItem
+                    checked={aiAnalysisEnabled}
+                    onCheckedChange={(checked) => {
+                      setAiAnalysisEnabled(checked)
+                      if (checked) {
+                        analyzeCode(code, language)
+                      } else {
+                        setCodeIssues([])
+                      }
+                    }}
+                    className="text-[#cccccc] text-xs"
+                  >
+                    <Eye className="h-3 w-3 mr-2 text-amber-500" />
+                    Enable AI Analysis
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={commentCheckEnabled}
+                    onCheckedChange={(checked) => {
+                      setCommentCheckEnabled(checked)
+                      if (aiAnalysisEnabled) {
+                        analyzeCode(code, language)
+                      }
+                    }}
+                    className="text-[#cccccc] text-xs"
+                  >
+                    <MessageSquareWarning className="h-3 w-3 mr-2 text-purple-500" />
+                    Check Comments Match Code
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator className="bg-[#3c3c3c]" />
+                  <div className="px-2 py-1.5 text-[10px] text-[#808080]">
+                    When enabled, AI will warn you if code comments do not match the actual code behavior.
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {/* AI Chat Button */}
               <Button
                 onClick={() => setShowAIPanel(!showAIPanel)}
@@ -674,21 +744,23 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
             />
           </div>
 
-          {/* Issues Panel */}
-          <IssuesPanel
-            issues={codeIssues}
-            isOpen={showIssuesPanel}
-            onClose={() => setShowIssuesPanel(false)}
-            onGoToLine={(line) => {
-              // Focus editor on the line with issue
-              if (editorRef.current) {
-                editorRef.current.revealLineInCenter(line)
-                editorRef.current.setPosition({ lineNumber: line, column: 1 })
-                editorRef.current.focus()
-              }
-              setShowIssuesPanel(false)
-            }}
-          />
+{/* Issues Panel */}
+<IssuesPanel
+issues={codeIssues}
+isOpen={showIssuesPanel}
+onClose={() => setShowIssuesPanel(false)}
+onGoToLine={(line) => {
+// Focus editor on the line with issue
+if (editorRef.current) {
+editorRef.current.revealLineInCenter(line)
+editorRef.current.setPosition({ lineNumber: line, column: 1 })
+editorRef.current.focus()
+}
+setShowIssuesPanel(false)
+}}
+onIgnoreIssue={handleIgnoreIssue}
+ignoredIssues={ignoredIssues}
+/>
 
           {/* Bottom Panel - Terminal and Output */}
           <div className="h-[280px] border-t border-[#191919] flex">

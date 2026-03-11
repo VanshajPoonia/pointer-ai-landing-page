@@ -5,6 +5,7 @@ import Editor, { OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 
 export interface CodeIssue {
+  id?: string
   line: number
   column: number
   endLine: number
@@ -12,6 +13,8 @@ export interface CodeIssue {
   message: string
   severity: 'error' | 'warning' | 'info' | 'hint'
   suggestion?: string | null
+  category?: 'syntax' | 'typo' | 'comment-mismatch' | 'logic' | 'undefined' | 'other'
+  ignored?: boolean
 }
 
 interface CodeEditorProps {

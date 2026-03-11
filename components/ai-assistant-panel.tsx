@@ -124,7 +124,6 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
                   'Generate a function that...',
                   'Explain this code line by line',
                   'Make this code better',
-                  'Check if comments match code',
                 ].map((suggestion) => (
                   <button
                     key={suggestion}
