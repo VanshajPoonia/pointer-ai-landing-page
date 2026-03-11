@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { CodeEditor } from './code-editor'
 import { Terminal } from './terminal'
@@ -9,7 +9,9 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle } from 'lucide-react'
+import { AIAssistantPanel } from './ai-assistant-panel'
+import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
 interface IDEInterfaceProps {
@@ -26,6 +28,10 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [executions, setExecutions] = useState(0)
   const [isPaid, setIsPaid] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showAIPanel, setShowAIPanel] = useState(false)
+  const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const supabase = createClient()
 
@@ -76,6 +82,45 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const handleLanguageChange = (newLanguage: string) => {
     // Create a new template file for the selected language
     createTemplateFile(newLanguage)
+  }
+
+  // Debounced code analysis
+  const analyzeCode = async (codeToAnalyze: string, lang: string) => {
+    if (!codeToAnalyze || codeToAnalyze.trim().length < 10) {
+      setCodeIssues([])
+      return
+    }
+
+    setIsAnalyzing(true)
+    try {
+      const response = await fetch('/api/ai-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeToAnalyze, language: lang }),
+      })
+      const data = await response.json()
+      setCodeIssues(data.issues || [])
+    } catch (error) {
+      console.error('Analysis error:', error)
+      setCodeIssues([])
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // Trigger analysis when code changes (debounced)
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode)
+    
+    // Clear existing timeout
+    if (analyzeTimeoutRef.current) {
+      clearTimeout(analyzeTimeoutRef.current)
+    }
+    
+    // Set new timeout for analysis (2 seconds after user stops typing)
+    analyzeTimeoutRef.current = setTimeout(() => {
+      analyzeCode(newCode, language)
+    }, 2000)
   }
 
   const loadUserData = async () => {
@@ -394,6 +439,32 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                   <option value="pascal">Pascal</option>
                 </optgroup>
               </select>
+              {/* Issue count indicator */}
+              {codeIssues.length > 0 && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-[#5a1d1d] rounded text-[11px] text-[#f48771]">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>{codeIssues.length} issue{codeIssues.length > 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {isAnalyzing && (
+                <div className="flex items-center gap-1 px-2 py-1 text-[11px] text-[#808080]">
+                  <Sparkles className="h-3 w-3 animate-pulse text-amber-500" />
+                  <span>Analyzing...</span>
+                </div>
+              )}
+              <Button
+                onClick={() => setShowAIPanel(!showAIPanel)}
+                size="sm"
+                variant="ghost"
+                className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+                  showAIPanel 
+                    ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500' 
+                    : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+                }`}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                AI
+              </Button>
               <Button
                 onClick={saveFile}
                 size="sm"
@@ -416,11 +487,21 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           </div>
 
           {/* Editor Area */}
-          <div className="flex-1 min-h-0">
-            <CodeEditor
-              value={code}
+          <div className="flex-1 min-h-0 flex">
+            <div className="flex-1">
+              <CodeEditor
+                value={code}
+                language={language}
+                onChange={handleCodeChange}
+                issues={codeIssues}
+              />
+            </div>
+            {/* AI Assistant Panel */}
+            <AIAssistantPanel
+              code={code}
               language={language}
-              onChange={setCode}
+              isOpen={showAIPanel}
+              onClose={() => setShowAIPanel(false)}
             />
           </div>
 

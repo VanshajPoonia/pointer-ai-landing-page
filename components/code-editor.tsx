@@ -1,14 +1,66 @@
 'use client'
 
-import Editor from '@monaco-editor/react'
+import { useRef, useEffect } from 'react'
+import Editor, { OnMount } from '@monaco-editor/react'
+import type { editor } from 'monaco-editor'
+
+export interface CodeIssue {
+  line: number
+  column: number
+  endLine: number
+  endColumn: number
+  message: string
+  severity: 'error' | 'warning' | 'info' | 'hint'
+  suggestion?: string | null
+}
 
 interface CodeEditorProps {
   value: string
   language: string
   onChange: (value: string) => void
+  issues?: CodeIssue[]
 }
 
-export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
+export function CodeEditor({ value, language, onChange, issues = [] }: CodeEditorProps) {
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const monacoRef = useRef<typeof import('monaco-editor') | null>(null)
+
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor
+    monacoRef.current = monaco
+  }
+
+  // Update markers when issues change
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return
+
+    const model = editorRef.current.getModel()
+    if (!model) return
+
+    const monaco = monacoRef.current
+
+    const severityMap = {
+      error: monaco.MarkerSeverity.Error,
+      warning: monaco.MarkerSeverity.Warning,
+      info: monaco.MarkerSeverity.Info,
+      hint: monaco.MarkerSeverity.Hint,
+    }
+
+    const markers = issues.map((issue) => ({
+      startLineNumber: issue.line,
+      startColumn: issue.column,
+      endLineNumber: issue.endLine,
+      endColumn: issue.endColumn,
+      message: issue.suggestion 
+        ? `${issue.message}\n\nSuggestion: ${issue.suggestion}`
+        : issue.message,
+      severity: severityMap[issue.severity],
+      source: 'Volt AI',
+    }))
+
+    monaco.editor.setModelMarkers(model, 'volt-ai', markers)
+  }, [issues])
+
   const getMonacoLanguage = (lang: string) => {
     const languageMap: Record<string, string> = {
       // Popular languages
@@ -79,6 +131,7 @@ export function CodeEditor({ value, language, onChange }: CodeEditorProps) {
         value={value}
         theme="vs-dark"
         onChange={(val) => onChange(val || '')}
+        onMount={handleEditorMount}
         options={{
           fontSize: 14,
           fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
