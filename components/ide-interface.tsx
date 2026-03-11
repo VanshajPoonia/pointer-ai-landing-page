@@ -9,9 +9,10 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare, Eye, EyeOff } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, MessageSquare, Eye, EyeOff, GitBranch } from 'lucide-react'
 import { AIAssistantPanel } from './ai-assistant-panel'
 import { IssuesPanel } from './issues-panel'
+import { GitPanel } from './git-panel'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
@@ -31,6 +32,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [showAIPanel, setShowAIPanel] = useState(true) // Open by default
   const [showIssuesPanel, setShowIssuesPanel] = useState(false)
+  const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true) // Toggle for AI analysis
@@ -420,17 +422,58 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       />
       
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <FileExplorer
-          nodes={fileSystem.nodes}
-          rootId={fileSystem.rootId}
-          activeFileId={activeFileId}
-          onSelectFile={handleSelectFile}
-          onCreateFile={handleCreateFile}
-          onCreateFolder={handleCreateFolder}
-          onDeleteNode={handleDeleteNode}
-          onRenameNode={handleRenameNode}
-        />
+        {/* Activity Bar */}
+        <div className="w-[48px] bg-[#333333] flex flex-col items-center py-2 border-r border-[#191919]">
+          <button
+            onClick={() => setActiveLeftPanel('files')}
+            className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+              activeLeftPanel === 'files'
+                ? 'text-white'
+                : 'text-[#858585] hover:text-white'
+            }`}
+            title="Explorer"
+          >
+            {activeLeftPanel === 'files' && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-white" />
+            )}
+            <FileCode className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setActiveLeftPanel('git')}
+            className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+              activeLeftPanel === 'git'
+                ? 'text-white'
+                : 'text-[#858585] hover:text-white'
+            }`}
+            title="Source Control"
+          >
+            {activeLeftPanel === 'git' && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-white" />
+            )}
+            <GitBranch className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Sidebar Content */}
+        <div className="w-[240px] bg-[#252526] border-r border-[#191919]">
+          {activeLeftPanel === 'files' ? (
+            <FileExplorer
+              nodes={fileSystem.nodes}
+              rootId={fileSystem.rootId}
+              activeFileId={activeFileId}
+              onSelectFile={handleSelectFile}
+              onCreateFile={handleCreateFile}
+              onCreateFolder={handleCreateFolder}
+              onDeleteNode={handleDeleteNode}
+              onRenameNode={handleRenameNode}
+            />
+          ) : (
+            <GitPanel
+              fileSystem={fileSystem}
+              onFileSystemChange={setFileSystem}
+            />
+          )}
+        </div>
 
         {/* Main Content */}
         <div className="flex flex-1 flex-col min-w-0">

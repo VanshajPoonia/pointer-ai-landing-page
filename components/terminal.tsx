@@ -107,6 +107,16 @@ export function Terminal({ onClear, fileSystem, onUpdateFileSystem }: TerminalPr
 │    time <cmd>       Measure command execution time          │
 │    alias            Show/set command aliases                │
 │    help             Show this help message                  │
+├─────────────────────────────────────────────────────────────┤
+│  GIT COMMANDS                                               │
+│    git status       Show working tree status                │
+│    git add <file>   Stage file for commit                   │
+│    git commit -m    Commit staged changes                   │
+│    git log          Show commit history                     │
+│    git branch       List/create branches                    │
+│    git checkout     Switch branches                         │
+│    git diff         Show file differences                   │
+│    git init         Initialize new repository               │
 ╰─────────────────────────────────────────────────────────────╯`
         break
 
@@ -537,6 +547,127 @@ export function Terminal({ onClear, fileSystem, onUpdateFileSystem }: TerminalPr
           const end = performance.now()
           setLines(prev => [...prev, { type: 'info', content: `\nreal\t${((end - start) / 1000).toFixed(3)}s` }])
           return
+        }
+        break
+
+      case 'git':
+        const gitSubCmd = args[0]
+        switch (gitSubCmd) {
+          case 'status':
+            output = `On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+
+${Object.values(fileSystem.nodes)
+  .filter(n => n.type === 'file' && n.name)
+  .slice(0, 3)
+  .map(n => `\t\x1b[31mmodified:   ${n.name}\x1b[0m`)
+  .join('\n')}
+
+no changes added to commit (use "git add" and/or "git commit -a")`
+            break
+          case 'init':
+            output = `Initialized empty Git repository in /volt-ide/.git/`
+            break
+          case 'add':
+            if (args[1] === '.') {
+              output = 'Added all files to staging area'
+            } else if (args[1]) {
+              output = `Added ${args[1]} to staging area`
+            } else {
+              output = 'Nothing specified, nothing added.'
+            }
+            break
+          case 'commit':
+            if (args[1] === '-m' && args[2]) {
+              const msg = args.slice(2).join(' ').replace(/^["']|["']$/g, '')
+              output = `[main ${Math.random().toString(36).substring(2, 9)}] ${msg}
+ 3 files changed, 42 insertions(+), 12 deletions(-)`
+            } else {
+              output = 'error: switch `m` requires a value'
+            }
+            break
+          case 'log':
+            output = `commit ${Math.random().toString(36).substring(2, 9)}abc123 (HEAD -> main)
+Author: volt-user <user@volt-ide.com>
+Date:   ${new Date().toUTCString()}
+
+    Initial commit
+
+commit def456${Math.random().toString(36).substring(2, 9)} 
+Author: volt-user <user@volt-ide.com>
+Date:   ${new Date(Date.now() - 86400000).toUTCString()}
+
+    Setup project structure`
+            break
+          case 'branch':
+            if (args[1]) {
+              output = `Created branch '${args[1]}'`
+            } else {
+              output = `* main
+  develop
+  feature/new-feature`
+            }
+            break
+          case 'checkout':
+            if (args[1]) {
+              output = `Switched to branch '${args[1]}'`
+            } else {
+              output = 'error: you must specify a branch to checkout'
+            }
+            break
+          case 'diff':
+            output = `diff --git a/main.js b/main.js
+index abc1234..def5678 100644
+--- a/main.js
++++ b/main.js
+@@ -1,4 +1,5 @@
+ // JavaScript Template
+ console.log("Hello, World!");
++console.log("New line added");
+ 
+ // Your code here`
+            break
+          case 'push':
+            output = `Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Writing objects: 100% (3/3), 285 bytes | 285.00 KiB/s, done.
+Total 3 (delta 2), reused 0 (delta 0)
+To github.com:user/repo.git
+   abc1234..def5678  main -> main`
+            break
+          case 'pull':
+            output = `Already up to date.`
+            break
+          case 'clone':
+            if (args[1]) {
+              const repoName = args[1].split('/').pop()?.replace('.git', '') || 'repo'
+              output = `Cloning into '${repoName}'...
+remote: Enumerating objects: 100, done.
+remote: Counting objects: 100% (100/100), done.
+remote: Compressing objects: 100% (80/80), done.
+remote: Total 100 (delta 20), reused 90 (delta 10)
+Receiving objects: 100% (100/100), 50.00 KiB | 1.00 MiB/s, done.
+Resolving deltas: 100% (20/20), done.`
+            } else {
+              output = 'usage: git clone <repository>'
+            }
+            break
+          case 'remote':
+            if (args[1] === 'add' && args[2] && args[3]) {
+              output = ''
+            } else if (args[1] === '-v') {
+              output = `origin\thttps://github.com/user/repo.git (fetch)
+origin\thttps://github.com/user/repo.git (push)`
+            } else {
+              output = 'origin'
+            }
+            break
+          default:
+            output = `git: '${gitSubCmd}' is not a git command. See 'git --help'.`
         }
         break
 
