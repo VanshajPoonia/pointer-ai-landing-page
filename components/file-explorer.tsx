@@ -18,7 +18,7 @@ interface FileExplorerProps {
   rootId: string
   activeFileId: string | null
   onSelectFile: (nodeId: string) => void
-  onCreateFile: (parentId: string) => void
+  onCreateFile: (parentId: string, startRenaming?: (id: string) => void) => void
   onCreateFolder: (parentId: string) => void
   onDeleteNode: (nodeId: string) => void
   onRenameNode: (nodeId: string, newName: string) => void
@@ -51,6 +51,12 @@ export function FileExplorer({
   const startRename = (nodeId: string, currentName: string) => {
     setRenamingId(nodeId)
     setRenameValue(currentName)
+  }
+
+  // For external triggering (new file creation)
+  const startRenameExternal = (nodeId: string) => {
+    setRenamingId(nodeId)
+    setRenameValue('')
   }
 
   const finishRename = () => {
@@ -126,7 +132,7 @@ export function FileExplorer({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-[#252526] border-[#3c3c3c] text-[#cccccc]">
-                <DropdownMenuItem onClick={() => onCreateFile(nodeId)} className="text-xs cursor-pointer">
+                <DropdownMenuItem onClick={() => onCreateFile(nodeId, startRenameExternal)} className="text-xs cursor-pointer">
                   <Plus className="h-3 w-3 mr-2" />
                   New File
                 </DropdownMenuItem>
@@ -232,7 +238,7 @@ export function FileExplorer({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onCreateFile('root')}
+            onClick={() => onCreateFile('root', startRenameExternal)}
             className="h-6 w-6 p-0 text-[#cccccc] hover:bg-[#3e3e42]"
             title="New File"
           >

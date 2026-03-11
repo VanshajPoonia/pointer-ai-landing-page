@@ -4,8 +4,9 @@ export interface FileNode {
   type: 'file' | 'folder'
   content?: string // Only for files
   language?: string // Only for files
-  children?: FileNode[] // Only for folders
+  children?: string[] // Only for folders - array of child IDs
   parentId?: string | null
+  isNew?: boolean // Flag for newly created files awaiting name input
 }
 
 export interface FileSystemState {

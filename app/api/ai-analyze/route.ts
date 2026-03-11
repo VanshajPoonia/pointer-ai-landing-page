@@ -3,12 +3,9 @@ import { generateText } from 'ai'
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  console.log('[v0] AI analyze API called')
   const { code, language }: { code: string; language: string } = await req.json()
-  console.log('[v0] Analyzing', language, 'code, length:', code?.length)
 
   if (!code || code.trim().length < 5) {
-    console.log('[v0] Code too short, skipping analysis')
     return Response.json({ issues: [] })
   }
 
@@ -71,18 +68,14 @@ BE THOROUGH. Find every single typo and bug. Do not miss obvious errors like "co
     })
 
     // Parse the response
-    console.log('[v0] AI raw response:', result.text)
     let issues = []
     try {
       const text = result.text.trim()
       // Remove markdown code blocks if present
       const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      console.log('[v0] Cleaned JSON:', jsonText)
       const parsed = JSON.parse(jsonText)
       issues = parsed.issues || []
-      console.log('[v0] Parsed issues:', issues.length)
-    } catch (parseError) {
-      console.error('[v0] Failed to parse AI response:', result.text)
+    } catch {
       issues = []
     }
 

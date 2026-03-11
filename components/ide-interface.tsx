@@ -91,7 +91,6 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       return
     }
 
-    console.log('[v0] Starting AI analysis for', lang)
     setIsAnalyzing(true)
     try {
       const response = await fetch('/api/ai-analyze', {
@@ -100,10 +99,8 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         body: JSON.stringify({ code: codeToAnalyze, language: lang }),
       })
       const data = await response.json()
-      console.log('[v0] AI analysis response:', data)
       setCodeIssues(data.issues || [])
-    } catch (error) {
-      console.error('[v0] Analysis error:', error)
+    } catch {
       setCodeIssues([])
     } finally {
       setIsAnalyzing(false)
@@ -148,15 +145,16 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
     }
   }
 
-  const handleCreateFile = (parentId: string) => {
+  const handleCreateFile = (parentId: string, startRenaming?: (id: string) => void) => {
     const newFileId = `file-${Date.now()}`
     const newFile: FileNode = {
       id: newFileId,
-      name: 'untitled.js',
+      name: '',
       type: 'file',
-      content: '// Write your code here\n',
-      language: 'javascript',
+      content: '',
+      language: 'plaintext',
       parentId,
+      isNew: true,
     }
 
     const parent = fileSystem.nodes[parentId]
@@ -173,8 +171,13 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         },
       })
       setActiveFileId(newFileId)
-      setCode(newFile.content || '')
-      setLanguage(newFile.language || 'javascript')
+      setCode('')
+      setLanguage('plaintext')
+      
+      // Trigger rename mode for the new file
+      if (startRenaming) {
+        setTimeout(() => startRenaming(newFileId), 50)
+      }
     }
   }
 
@@ -232,9 +235,65 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
     }
   }
 
+  // Map file extensions to languages
+  const getLanguageFromExtension = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase()
+    const extensionMap: Record<string, string> = {
+      'js': 'javascript',
+      'jsx': 'javascript',
+      'ts': 'typescript',
+      'tsx': 'typescript',
+      'py': 'python',
+      'java': 'java',
+      'cpp': 'cpp',
+      'cc': 'cpp',
+      'cxx': 'cpp',
+      'c': 'c',
+      'h': 'c',
+      'cs': 'csharp',
+      'go': 'go',
+      'rs': 'rust',
+      'php': 'php',
+      'rb': 'ruby',
+      'kt': 'kotlin',
+      'kts': 'kotlin',
+      'swift': 'swift',
+      'dart': 'dart',
+      'scala': 'scala',
+      'hs': 'haskell',
+      'ex': 'elixir',
+      'exs': 'elixir',
+      'r': 'r',
+      'lua': 'lua',
+      'pl': 'perl',
+      'sh': 'bash',
+      'bash': 'bash',
+      'sql': 'sql',
+      'html': 'html',
+      'htm': 'html',
+      'css': 'css',
+      'json': 'json',
+      'yaml': 'yaml',
+      'yml': 'yaml',
+      'xml': 'xml',
+      'md': 'markdown',
+      'txt': 'plaintext',
+    }
+    return extensionMap[ext || ''] || 'plaintext'
+  }
+
   const handleRenameNode = (nodeId: string, newName: string) => {
     const node = fileSystem.nodes[nodeId]
     if (!node) return
+
+    const detectedLanguage = node.type === 'file' ? getLanguageFromExtension(newName) : undefined
+    
+    // Get template content for new files
+    let newContent = node.content
+    if (node.type === 'file' && (node as any).isNew && detectedLanguage) {
+      const template = getLanguageTemplate(detectedLanguage)
+      newContent = template.content
+    }
 
     setFileSystem({
       ...fileSystem,
@@ -243,9 +302,22 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
         [nodeId]: {
           ...node,
           name: newName,
+          language: detectedLanguage || node.language,
+          content: newContent,
+          isNew: false,
         },
       },
     })
+
+    // Update current editor if this is the active file
+    if (activeFileId === nodeId && node.type === 'file') {
+      if (detectedLanguage) {
+        setLanguage(detectedLanguage)
+      }
+      if ((node as any).isNew && newContent) {
+        setCode(newContent)
+      }
+    }
   }
 
   const saveFile = () => {
