@@ -15,7 +15,6 @@ interface AIAssistantPanelProps {
 }
 
 export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange }: AIAssistantPanelProps) {
-  console.log('[v0] AIAssistantPanel isOpen:', isOpen)
   const [input, setInput] = useState('')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
