@@ -85,6 +85,32 @@ ${codeWithLineNumbers}
       const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       const parsed = JSON.parse(jsonText)
       issues = parsed.issues || []
+      
+      // Validate issues - filter out false positives
+      const codeLines = code.split('\n')
+      issues = issues.filter((issue: { line: number; message: string; category?: string }) => {
+        const lineIndex = issue.line - 1
+        if (lineIndex < 0 || lineIndex >= codeLines.length) {
+          return false // Invalid line number
+        }
+        
+        const lineContent = codeLines[lineIndex]
+        
+        // For typo issues, verify the typo actually exists in the line
+        if (issue.category === 'typo' && issue.message) {
+          // Extract the typo from the message (e.g., "console.lg" from '"console.lg" should be "console.log"')
+          const typoMatch = issue.message.match(/"([^"]+)"\s*should\s*be/i)
+          if (typoMatch) {
+            const typo = typoMatch[1]
+            // If the typo doesn't exist in the line, it's a false positive
+            if (!lineContent.includes(typo)) {
+              return false
+            }
+          }
+        }
+        
+        return true
+      })
     } catch {
       issues = []
     }
