@@ -15,6 +15,7 @@ interface AIAssistantPanelProps {
 }
 
 export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange }: AIAssistantPanelProps) {
+  console.log('[v0] AIAssistantPanel isOpen:', isOpen)
   const [input, setInput] = useState('')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -73,13 +74,10 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
     }
   }
 
+  if (!isOpen) return null
+
   return (
-    <div 
-      className={`h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0 ${
-        isOpen ? 'w-[400px]' : 'w-0 overflow-hidden pointer-events-none'
-      }`}
-    >
-      <div className={`w-[400px] h-full flex flex-col ${isOpen ? '' : 'invisible'}`}>
+    <div className="w-[400px] h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0">
       {/* Header */}
         <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919] shrink-0">
           <div className="flex items-center gap-2">
@@ -253,7 +251,6 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
             </Button>
           </div>
         </form>
-      </div>
     </div>
   )
 }

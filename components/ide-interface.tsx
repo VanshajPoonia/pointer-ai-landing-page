@@ -689,7 +689,10 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
               </DropdownMenu>
               {/* AI Chat Button */}
               <Button
-                onClick={() => setShowAIPanel(!showAIPanel)}
+                onClick={() => {
+                  console.log('[v0] AI Chat button clicked, current showAIPanel:', showAIPanel, '-> setting to:', !showAIPanel)
+                  setShowAIPanel(!showAIPanel)
+                }}
                 size="sm"
                 variant="ghost"
                 className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
