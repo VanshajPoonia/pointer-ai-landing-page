@@ -16,12 +16,12 @@ export default function IDEPreviewPage() {
   }
 
   return (
-    <div className="relative">
-      {/* Preview banner */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/90 text-black px-4 py-2 text-center text-sm font-medium">
+    <div className="h-screen flex flex-col">
+      {/* Preview banner - positioned above IDE */}
+      <div className="bg-amber-500 text-black px-4 py-1.5 text-center text-sm font-medium shrink-0">
         Preview Mode - <Link href="/auth/login" className="underline font-bold">Log in</Link> to run code and save your work
       </div>
-      <div className="pt-10">
+      <div className="flex-1 min-h-0">
         <IDEInterface user={mockUser as any} />
       </div>
     </div>

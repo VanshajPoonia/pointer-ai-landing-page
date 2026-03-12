@@ -723,8 +723,8 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
           </div>
 
           {/* Editor Area */}
-          <div className="flex-1 min-h-0 flex">
-            <div className="flex-1">
+          <div className="flex-1 min-h-0 flex overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <CodeEditor
                 value={code}
                 language={language}
