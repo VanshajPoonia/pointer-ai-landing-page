@@ -75,16 +75,11 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
 
   return (
     <div 
-      className="h-full bg-[#252526] border-l border-[#191919] flex flex-col"
-      style={{ 
-        width: isOpen ? '400px' : '0px',
-        minWidth: isOpen ? '400px' : '0px',
-        opacity: isOpen ? 1 : 0,
-        overflow: 'hidden',
-        transition: 'width 0.2s ease, opacity 0.2s ease',
-        pointerEvents: isOpen ? 'auto' : 'none'
-      }}
+      className={`h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0 ${
+        isOpen ? 'w-[400px]' : 'w-0 overflow-hidden pointer-events-none'
+      }`}
     >
+      <div className={`w-[400px] h-full flex flex-col ${isOpen ? '' : 'invisible'}`}>
       {/* Header */}
         <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919] shrink-0">
           <div className="flex items-center gap-2">
@@ -258,6 +253,7 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
             </Button>
           </div>
         </form>
+      </div>
     </div>
   )
 }
