@@ -3,8 +3,16 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { Bot, Send, X, Sparkles, Loader2, Trash2, Copy, Check, Play } from 'lucide-react'
+import { Bot, Send, X, Sparkles, Loader2, Trash2, Copy, Check, Play, FolderTree, FileCode } from 'lucide-react'
 import { Button } from './ui/button'
+
+interface ProjectFile {
+  id: string
+  name: string
+  path: string
+  content: string
+  language: string
+}
 
 interface AIAssistantPanelProps {
   code: string
@@ -12,20 +20,40 @@ interface AIAssistantPanelProps {
   isOpen: boolean
   onClose: () => void
   onCodeChange?: (newCode: string) => void
+  projectFiles?: ProjectFile[]
+  currentFileName?: string
 }
 
-export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange }: AIAssistantPanelProps) {
+export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange, projectFiles = [], currentFileName }: AIAssistantPanelProps) {
   const [input, setInput] = useState('')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const [includeProjectContext, setIncludeProjectContext] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const codeRef = useRef(code)
   const languageRef = useRef(language)
+  const projectFilesRef = useRef(projectFiles)
+  const currentFileNameRef = useRef(currentFileName)
   
   // Keep refs updated with latest values
   useEffect(() => {
     codeRef.current = code
     languageRef.current = language
-  }, [code, language])
+    projectFilesRef.current = projectFiles
+    currentFileNameRef.current = currentFileName
+  }, [code, language, projectFiles, currentFileName])
+  
+  // Build project context string
+  const buildProjectContext = () => {
+    if (!includeProjectContext || projectFilesRef.current.length === 0) return ''
+    
+    const filesContext = projectFilesRef.current
+      .filter(f => f.content && f.content.trim())
+      .slice(0, 20) // Limit to 20 files for context
+      .map(f => `### ${f.path}\n\`\`\`${f.language}\n${f.content.slice(0, 2000)}${f.content.length > 2000 ? '\n// ... truncated' : ''}\n\`\`\``)
+      .join('\n\n')
+    
+    return `\n\n## PROJECT FILES (${projectFilesRef.current.length} files):\n${filesContext}`
+  }
   
   // Memoize the transport to prevent re-creation on every render
   const transport = useMemo(() => new DefaultChatTransport({ 
@@ -36,6 +64,8 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
         id,
         code: codeRef.current,
         language: languageRef.current,
+        projectContext: buildProjectContext(),
+        currentFileName: currentFileNameRef.current,
       },
     }),
   }), [])
@@ -73,10 +103,12 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="w-full max-w-[400px] min-w-[280px] h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0 overflow-hidden">
+    <div className={`w-full max-w-[400px] min-w-[280px] h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0 overflow-hidden transition-all duration-300 ease-in-out ${
+      isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full w-0 min-w-0 max-w-0 border-0'
+    }`}>
+      {!isOpen ? null : (
+        <>
       {/* Header */}
         <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919] shrink-0">
           <div className="flex items-center gap-2">
@@ -250,6 +282,8 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
             </Button>
           </div>
         </form>
+        </>
+      )}
     </div>
   )
 }

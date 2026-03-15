@@ -45,7 +45,7 @@ import { LinterPanel, useLinter } from './linter-panel'
 import { ImportOrganizer } from './import-organizer'
 import { CodeCoverageViewer, generateMockReport, CoverageReport } from './code-coverage'
 import { TypeCheckerPanel, useTypeChecker } from './type-checker'
-import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon, GitMerge, Archive, GitPullRequest, MessageCircle, Code2, Maximize, Layout, PictureInPicture, Bug } from 'lucide-react'
+import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon, GitMerge, Archive, GitPullRequest, MessageCircle, Code2, Maximize, Layout, PictureInPicture, Bug, X } from 'lucide-react'
 // Additional feature imports
 import { MergeConflictResolver } from './merge-conflict-resolver'
 import { StashManager, useStashManager } from './stash-manager'
@@ -149,6 +149,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showScriptRunner, setShowScriptRunner] = useState(false)
   const [showDependencyViewer, setShowDependencyViewer] = useState(false)
   const [showProjectTemplates, setShowProjectTemplates] = useState(false)
+  const [openTabs, setOpenTabs] = useState<string[]>([]) // Array of file IDs for open tabs
   const [envVariables, setEnvVariables] = useState<Array<{ key: string; value: string; isSecret: boolean }>>([
     { key: 'DATABASE_URL', value: 'postgresql://...', isSecret: true },
     { key: 'NEXT_PUBLIC_API_URL', value: 'https://api.example.com', isSecret: false }
@@ -608,6 +609,47 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       setLanguage(node.language || 'javascript')
       // Update preview when selecting a file
       updatePreviewContent(node.content || '', node.language || 'javascript')
+      // Add to open tabs if not already open
+      setOpenTabs(prev => prev.includes(nodeId) ? prev : [...prev, nodeId])
+    }
+  }
+
+  const handleCloseTab = (tabId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setOpenTabs(prev => {
+      const newTabs = prev.filter(id => id !== tabId)
+      // If closing the active tab, switch to another tab
+      if (activeFileId === tabId && newTabs.length > 0) {
+        const closedIndex = prev.indexOf(tabId)
+        const newActiveIndex = Math.min(closedIndex, newTabs.length - 1)
+        const newActiveId = newTabs[newActiveIndex]
+        const node = fileSystem.nodes[newActiveId]
+        if (node) {
+          setActiveFileId(newActiveId)
+          setCode(node.content || '')
+          setLanguage(node.language || 'javascript')
+        }
+      } else if (newTabs.length === 0) {
+        setActiveFileId(null)
+        setCode('')
+      }
+      return newTabs
+    })
+  }
+
+  const handleCloseAllTabs = () => {
+    setOpenTabs([])
+    setActiveFileId(null)
+    setCode('')
+  }
+
+  const handleCloseOtherTabs = (keepTabId: string) => {
+    setOpenTabs([keepTabId])
+    const node = fileSystem.nodes[keepTabId]
+    if (node) {
+      setActiveFileId(keepTabId)
+      setCode(node.content || '')
+      setLanguage(node.language || 'javascript')
     }
   }
 
@@ -989,11 +1031,11 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto toolbar-scroll flex-1 min-w-0 pr-2">
               <select
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value)}
-                className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer"
+                className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer shrink-0 transition-all duration-150"
               >
                 <optgroup label="Popular">
                   <option value="javascript">JavaScript</option>
@@ -1242,7 +1284,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setAiAutocompleteEnabled(!aiAutocompleteEnabled)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       aiAutocompleteEnabled
         ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400'
         : 'text-[#666666] hover:bg-[#3c3c3c]'
@@ -1260,7 +1302,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowAIToolsPanel(!showAIToolsPanel)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       showAIToolsPanel
         ? 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1275,7 +1317,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowAIPanel(!showAIPanel)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       showAIPanel
         ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1289,7 +1331,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowQuickOpen(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Quick Open (Cmd+P)"
   >
     <Search className="mr-1.5 h-4 w-4" />
@@ -1300,7 +1342,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowCommandPalette(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Command Palette (Cmd+Shift+P)"
   >
     <Command className="mr-1.5 h-4 w-4" />
@@ -1310,7 +1352,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowSettingsPanel(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Settings (Cmd+,)"
   >
     <Settings className="h-4 w-4" />
@@ -1327,7 +1369,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     }}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Compare Changes"
   >
   <GitCompare className="h-4 w-4" />
@@ -1337,7 +1379,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowGitBlame(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Git Blame"
   >
     <History className="h-4 w-4" />
@@ -1347,7 +1389,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowDocumentOutline(!showDocumentOutline)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       showDocumentOutline
         ? 'bg-blue-500/20 text-blue-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1361,7 +1403,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   onClick={() => setShowRefactoringPanel(true)}
   size="sm"
   variant="ghost"
-  className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+  className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
   title="AI Refactoring"
   >
   <Wand2 className="h-4 w-4" />
@@ -1371,7 +1413,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowBookmarksPanel(true)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       (bookmarks?.bookmarks || []).length > 0
         ? 'text-blue-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1388,7 +1430,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowLinterPanel(true)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       (linter.issues || []).filter(i => i.severity === 'error').length > 0
         ? 'text-red-400'
         : (linter.issues || []).filter(i => i.severity === 'warning').length > 0
@@ -1407,7 +1449,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowImportOrganizer(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Organize Imports (Cmd+Shift+O)"
   >
     <Package className="h-4 w-4" />
@@ -1417,7 +1459,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowCoverageViewer(true)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       coverageReport
         ? 'text-green-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1431,7 +1473,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   onClick={() => setShowTypeChecker(true)}
   size="sm"
   variant="ghost"
-  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+  className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
   (typeChecker.errors || []).filter(e => e.severity === 'error').length > 0
   ? 'text-red-400'
   : (typeChecker.errors || []).length > 0
@@ -1450,7 +1492,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowDebugger(!showDebugger)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       debugger_?.isDebugging
         ? debugger_?.isPaused
           ? 'text-yellow-400 bg-yellow-500/10'
@@ -1593,6 +1635,38 @@ onClick={() => pipPreview?.openPiP?.('/api/preview')}
 {/* Editor Area */}
   <div className="flex-1 min-h-0 flex overflow-hidden">
   <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+  {/* File Tabs */}
+  {openTabs.length > 0 && (
+    <div className="flex items-center bg-[#252526] border-b border-[#191919] overflow-x-auto scrollbar-thin">
+      {openTabs.map(tabId => {
+        const node = fileSystem.nodes[tabId]
+        if (!node) return null
+        const isActive = tabId === activeFileId
+        return (
+          <div
+            key={tabId}
+            onClick={() => handleSelectFile(tabId)}
+            className={`group flex items-center gap-1.5 px-3 py-1.5 text-[12px] cursor-pointer border-r border-[#191919] shrink-0 transition-all duration-150 ${
+              isActive 
+                ? 'bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#0078d4]' 
+                : 'text-[#969696] hover:bg-[#2a2a2a] border-t-2 border-t-transparent'
+            }`}
+          >
+            <FileCode className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate max-w-[120px]">{node.name}</span>
+            <button
+              onClick={(e) => handleCloseTab(tabId, e)}
+              className={`ml-1 p-0.5 rounded hover:bg-[#3c3c3c] transition-opacity duration-150 ${
+                isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )}
   {/* Breadcrumb Navigation */}
   {activeFileId && (
     <BreadcrumbNavigation
@@ -1676,23 +1750,33 @@ onCursorChange={(position, selection) => {
                 onClose={() => setShowLivePreview(false)}
               />
             )}
-            {/* AI Assistant Panel */}
-            <AIAssistantPanel
-              code={code}
-              language={language}
-              isOpen={showAIPanel}
-              onClose={() => setShowAIPanel(false)}
-              onCodeChange={(newCode) => {
-                setCode(newCode)
-                updatePreviewContent(newCode, language)
-                // Trigger analysis after AI changes code
-                if (analyzeTimeoutRef.current) {
-                  clearTimeout(analyzeTimeoutRef.current)
-                }
-                analyzeTimeoutRef.current = setTimeout(() => {
-                  analyzeCode(newCode, language)
-                }, 1000)
-              }}
+{/* AI Assistant Panel */}
+  <AIAssistantPanel
+  code={code}
+  language={language}
+  isOpen={showAIPanel}
+  onClose={() => setShowAIPanel(false)}
+  currentFileName={activeFileId ? fileSystem.nodes[activeFileId]?.name : undefined}
+  projectFiles={Object.values(fileSystem.nodes)
+    .filter(node => node.type === 'file' && node.content)
+    .map(node => ({
+      id: node.id,
+      name: node.name,
+      path: getNodePath(fileSystem, node.id),
+      content: node.content || '',
+      language: node.language || 'plaintext'
+    }))}
+  onCodeChange={(newCode) => {
+  setCode(newCode)
+  updatePreviewContent(newCode, language)
+  // Trigger analysis after AI changes code
+  if (analyzeTimeoutRef.current) {
+  clearTimeout(analyzeTimeoutRef.current)
+  }
+  analyzeTimeoutRef.current = setTimeout(() => {
+  analyzeCode(newCode, language)
+  }, 1000)
+  }}
             />
             {/* Snippets Panel */}
             <SnippetsPanel

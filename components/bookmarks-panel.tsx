@@ -42,16 +42,20 @@ export interface BookmarkGroup {
 interface BookmarksPanelProps {
   isOpen: boolean
   onClose: () => void
-  bookmarks: BookmarkItem[]
-  groups: BookmarkGroup[]
-  onAddBookmark: (bookmark: Omit<BookmarkItem, 'id' | 'createdAt'>) => void
-  onRemoveBookmark: (id: string) => void
-  onUpdateBookmark: (id: string, updates: Partial<BookmarkItem>) => void
-  onNavigateToBookmark: (bookmark: BookmarkItem) => void
-  onCreateGroup: (name: string) => void
-  onDeleteGroup: (id: string) => void
-  onMoveToGroup: (bookmarkId: string, groupId: string | null) => void
-  onToggleGroup: (groupId: string) => void
+  bookmarks?: BookmarkItem[]
+  groups?: BookmarkGroup[]
+  onAddBookmark?: (bookmark: Omit<BookmarkItem, 'id' | 'createdAt'>) => void
+  onRemoveBookmark?: (id: string) => void
+  onRemove?: (id: string) => void
+  onUpdateBookmark?: (id: string, updates: Partial<BookmarkItem>) => void
+  onUpdateNote?: (id: string, note: string) => void
+  onNavigateToBookmark?: (bookmark: BookmarkItem) => void
+  onNavigate?: (bookmark: BookmarkItem) => void
+  onCreateGroup?: (name: string) => void
+  onDeleteGroup?: (id: string) => void
+  onMoveToGroup?: (bookmarkId: string, groupId: string | null) => void
+  onToggleGroup?: (groupId: string) => void
+  onClear?: () => void
   currentFileId?: string
   currentLine?: number
 }
@@ -70,19 +74,31 @@ const BOOKMARK_COLORS = [
 export function BookmarksPanel({
   isOpen,
   onClose,
-  bookmarks,
-  groups,
+  bookmarks = [],
+  groups = [],
   onAddBookmark,
   onRemoveBookmark,
+  onRemove,
   onUpdateBookmark,
+  onUpdateNote,
   onNavigateToBookmark,
+  onNavigate,
   onCreateGroup,
   onDeleteGroup,
   onMoveToGroup,
   onToggleGroup,
+  onClear,
   currentFileId,
   currentLine
 }: BookmarksPanelProps) {
+  // Use either prop name for backward compatibility
+  const handleRemove = onRemoveBookmark || onRemove || (() => {})
+  const handleNavigate = onNavigateToBookmark || onNavigate || (() => {})
+  const handleUpdateBookmark = onUpdateBookmark || ((id: string, updates: Partial<BookmarkItem>) => {
+    if (onUpdateNote && updates.label) {
+      onUpdateNote(id, updates.label)
+    }
+  })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editLabel, setEditLabel] = useState('')
   const [newGroupName, setNewGroupName] = useState('')
@@ -90,8 +106,8 @@ export function BookmarksPanel({
   const [sortBy, setSortBy] = useState<'file' | 'line' | 'date' | 'label'>('file')
 
   // Get ungrouped bookmarks
-  const ungroupedBookmarks = bookmarks.filter(b => 
-    !groups.some(g => g.bookmarks.some(gb => gb.id === b.id))
+  const ungroupedBookmarks = (bookmarks || []).filter(b => 
+    !(groups || []).some(g => (g.bookmarks || []).some(gb => gb.id === b.id))
   )
 
   // Sort bookmarks
@@ -121,7 +137,7 @@ export function BookmarksPanel({
   // Save bookmark label
   const saveLabel = () => {
     if (editingId) {
-      onUpdateBookmark(editingId, { label: editLabel })
+      handleUpdateBookmark(editingId, { label: editLabel })
       setEditingId(null)
       setEditLabel('')
     }
@@ -129,7 +145,7 @@ export function BookmarksPanel({
 
   // Create new group
   const createGroup = () => {
-    if (newGroupName.trim()) {
+    if (newGroupName.trim() && onCreateGroup) {
       onCreateGroup(newGroupName.trim())
       setNewGroupName('')
       setShowNewGroup(false)
@@ -138,7 +154,7 @@ export function BookmarksPanel({
 
   // Check if current position is bookmarked
   const isCurrentPositionBookmarked = currentFileId && currentLine && 
-    bookmarks.some(b => b.fileId === currentFileId && b.line === currentLine)
+    (bookmarks || []).some(b => b.fileId === currentFileId && b.line === currentLine)
 
   if (!isOpen) return null
 
@@ -227,11 +243,11 @@ export function BookmarksPanel({
         {/* Bookmarks List */}
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
           {/* Groups */}
-          {groups.map(group => (
+          {(groups || []).map(group => (
             <div key={group.id} className="border border-[#3c3c3c] rounded">
               <div
                 className="flex items-center gap-2 p-2 bg-[#252526] cursor-pointer hover:bg-[#2a2a2a]"
-                onClick={() => onToggleGroup(group.id)}
+                onClick={() => onToggleGroup?.(group.id)}
               >
                 {group.isExpanded ? (
                   <ChevronDown className="h-3.5 w-3.5" />
@@ -247,7 +263,7 @@ export function BookmarksPanel({
                   className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onDeleteGroup(group.id)
+                    onDeleteGroup?.(group.id)
                   }}
                 >
                   <Trash2 className="h-3 w-3 text-red-400" />
@@ -256,23 +272,23 @@ export function BookmarksPanel({
 
               {group.isExpanded && (
                 <div className="p-1">
-                  {sortBookmarks(group.bookmarks).map(bookmark => (
+                  {sortBookmarks(group.bookmarks || []).map(bookmark => (
                     <BookmarkRow
                       key={bookmark.id}
                       bookmark={bookmark}
                       editingId={editingId}
                       editLabel={editLabel}
-                      onNavigate={() => onNavigateToBookmark(bookmark)}
+                      onNavigate={() => handleNavigate(bookmark)}
                       onEdit={() => startEditing(bookmark)}
                       onSaveLabel={saveLabel}
                       onEditLabelChange={setEditLabel}
-                      onRemove={() => onRemoveBookmark(bookmark.id)}
-                      onUpdateColor={(color) => onUpdateBookmark(bookmark.id, { color })}
-                      groups={groups}
-                      onMoveToGroup={(groupId) => onMoveToGroup(bookmark.id, groupId)}
+                      onRemove={() => handleRemove(bookmark.id)}
+                      onUpdateColor={(color) => handleUpdateBookmark(bookmark.id, { color })}
+                      groups={groups || []}
+                      onMoveToGroup={(groupId) => onMoveToGroup?.(bookmark.id, groupId)}
                     />
                   ))}
-                  {group.bookmarks.length === 0 && (
+                  {(group.bookmarks || []).length === 0 && (
                     <div className="text-[11px] text-[#6e6e6e] text-center py-2">
                       No bookmarks in this group
                     </div>
@@ -295,14 +311,14 @@ export function BookmarksPanel({
                     bookmark={bookmark}
                     editingId={editingId}
                     editLabel={editLabel}
-                    onNavigate={() => onNavigateToBookmark(bookmark)}
+                    onNavigate={() => handleNavigate(bookmark)}
                     onEdit={() => startEditing(bookmark)}
                     onSaveLabel={saveLabel}
                     onEditLabelChange={setEditLabel}
-                    onRemove={() => onRemoveBookmark(bookmark.id)}
-                    onUpdateColor={(color) => onUpdateBookmark(bookmark.id, { color })}
-                    groups={groups}
-                    onMoveToGroup={(groupId) => onMoveToGroup(bookmark.id, groupId)}
+                    onRemove={() => handleRemove(bookmark.id)}
+                    onUpdateColor={(color) => handleUpdateBookmark(bookmark.id, { color })}
+                    groups={groups || []}
+                    onMoveToGroup={(groupId) => onMoveToGroup?.(bookmark.id, groupId)}
                   />
                 ))}
               </div>
@@ -310,7 +326,7 @@ export function BookmarksPanel({
           )}
 
           {/* Empty State */}
-          {bookmarks.length === 0 && (
+          {(bookmarks || []).length === 0 && (
             <div className="text-center py-8 text-[#6e6e6e]">
               <Bookmark className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p className="text-[12px]">No bookmarks yet</p>

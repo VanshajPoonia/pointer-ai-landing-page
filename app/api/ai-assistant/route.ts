@@ -95,7 +95,13 @@ To enable full AI functionality, deploy this project to Vercel with OIDC authent
 }
 
 export async function POST(req: Request) {
-  const { messages, code, language }: { messages: UIMessage[]; code?: string; language?: string } = await req.json()
+  const { messages, code, language, projectContext, currentFileName }: { 
+    messages: UIMessage[]
+    code?: string
+    language?: string
+    projectContext?: string
+    currentFileName?: string
+  } = await req.json()
 
   // Build system prompt for code assistance
   const systemPrompt = `You are Volt AI, an expert AI coding assistant similar to Claude Code. You are integrated into the Volt online IDE and can help developers write, debug, and generate code.
@@ -107,12 +113,21 @@ export async function POST(req: Request) {
 4. **Improve Code**: Suggest optimizations, better patterns, and best practices
 5. **Debug**: Help identify why code isn't working
 6. **Modify Code**: Make changes to existing code based on user requests
+7. **Project-Wide Analysis**: Answer questions about the entire project, find patterns, suggest refactors across files
 
-## CURRENT CODE CONTEXT:
-${code ? `The user is working with this ${language || 'code'}:
+## CURRENT FILE${currentFileName ? ` (${currentFileName})` : ''}:
+${code ? `The user is currently editing this ${language || 'code'}:
 \`\`\`${language || ''}
 ${code}
 \`\`\`` : 'No code in editor yet.'}
+
+${projectContext ? `## FULL PROJECT CONTEXT:
+You have access to the following project files. Use this context to:
+- Answer questions about how different parts of the codebase work together
+- Suggest improvements that consider the full project structure
+- Find dependencies and relationships between files
+- Provide consistent code style with existing patterns
+${projectContext}` : ''}
 
 ## IMPORTANT INSTRUCTIONS:
 

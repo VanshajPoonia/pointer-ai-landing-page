@@ -57,3 +57,86 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Smooth transitions for interactive elements */
+@layer utilities {
+  .transition-smooth {
+    @apply transition-all duration-150 ease-out;
+  }
+}
+
+/* Global button transitions */
+button, [role="button"], .btn {
+  transition: all 0.15s ease-out;
+}
+
+button:active, [role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* Smooth hover effects for toolbar buttons */
+.toolbar-btn {
+  @apply transition-all duration-150 ease-out;
+}
+
+.toolbar-btn:hover {
+  @apply bg-[#3c3c3c];
+}
+
+.toolbar-btn:active {
+  transform: scale(0.95);
+}
+
+/* Dialog and popover animations */
+[data-state="open"] {
+  animation: fadeIn 0.15s ease-out;
+}
+
+[data-state="closed"] {
+  animation: fadeOut 0.1s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Scrollbar styling for toolbar */
+.toolbar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #3c3c3c transparent;
+}
+
+.toolbar-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.toolbar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toolbar-scroll::-webkit-scrollbar-thumb {
+  background-color: #3c3c3c;
+  border-radius: 2px;
+}
+
+.toolbar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #4c4c4c;
+}
