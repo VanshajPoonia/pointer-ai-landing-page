@@ -141,15 +141,15 @@ export function MergeConflictResolver({
   fileName,
   ourBranch,
   theirBranch,
-  conflicts: initialConflicts,
+  conflicts: initialConflicts = [],
   onResolve
 }: MergeConflictResolverProps) {
-  const [conflicts, setConflicts] = useState<ConflictRegion[]>(initialConflicts)
+  const [conflicts, setConflicts] = useState<ConflictRegion[]>(initialConflicts || [])
   const [currentConflict, setCurrentConflict] = useState(0)
   const [viewMode, setViewMode] = useState<'split' | 'unified'>('split')
 
-  const resolvedCount = conflicts.filter(c => c.resolution !== null).length
-  const allResolved = resolvedCount === conflicts.length
+  const resolvedCount = (conflicts || []).filter(c => c.resolution !== null).length
+  const allResolved = conflicts.length > 0 && resolvedCount === conflicts.length
 
   const handleResolve = (conflictId: string, resolution: 'ours' | 'theirs' | 'both') => {
     setConflicts(prev => prev.map(c => 
@@ -186,7 +186,21 @@ export function MergeConflictResolver({
     onClose()
   }
 
-  const conflict = conflicts[currentConflict]
+  const conflict = conflicts?.[currentConflict]
+
+  if (!conflicts || conflicts.length === 0) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md bg-[#1e1e1e] border-[#3c3c3c]">
+          <DialogHeader>
+            <DialogTitle className="text-[#cccccc]">No Conflicts</DialogTitle>
+          </DialogHeader>
+          <p className="text-[#808080]">No merge conflicts to resolve.</p>
+          <Button onClick={onClose} className="mt-4">Close</Button>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
