@@ -24,6 +24,9 @@ import { AIAssistantPanel } from './ai-assistant-panel'
 import { IssuesPanel } from './issues-panel'
 import { SourceControlPanel } from './source-control-panel'
 import { LivePreviewPanel } from './live-preview-panel'
+import { SnippetsPanel } from './snippets-panel'
+import { DeploymentPanel } from './deployment-panel'
+import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
@@ -61,6 +64,9 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showAIPanel, setShowAIPanel] = useState(true) // Open by default
   const [showIssuesPanel, setShowIssuesPanel] = useState(false)
   const [showLivePreview, setShowLivePreview] = useState(false)
+  const [showSnippetsPanel, setShowSnippetsPanel] = useState(false)
+  const [showDeploymentPanel, setShowDeploymentPanel] = useState(false)
+  const [aiAutocompleteEnabled, setAiAutocompleteEnabled] = useState(true)
   const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -79,6 +85,19 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
 
   // Get current file's database ID for collaboration
   const activeFileDbId = activeFileId ? fileSystem.nodes[activeFileId]?.dbId : undefined
+
+  // AI Autocomplete hook
+  const {
+    suggestion: aiSuggestion,
+    isLoading: isAutocompletLoading,
+    getSuggestion,
+    acceptSuggestion,
+    dismissSuggestion,
+  } = useAIAutocomplete({
+    enabled: aiAutocompleteEnabled,
+    language,
+    debounceMs: 800,
+  })
 
   // Collaboration hook - only active when we have a project, user, and active file
   const {
@@ -1022,19 +1041,71 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       )}
     </>
   )}
+  {/* Code Snippets Button */}
+  <Button
+    onClick={() => setShowSnippetsPanel(!showSnippetsPanel)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      showSnippetsPanel
+        ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Code Snippets Library"
+  >
+    <FileCode className="mr-1.5 h-4 w-4" />
+    Snippets
+  </Button>
+  {/* Deploy Button */}
+  {projectId && (
+    <Button
+      onClick={() => setShowDeploymentPanel(!showDeploymentPanel)}
+      size="sm"
+      variant="ghost"
+      className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+        showDeploymentPanel
+          ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400'
+          : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+      }`}
+      title="Deploy to Vercel/Netlify"
+    >
+      <svg className="mr-1.5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 2L2 19.5h20L12 2z" />
+      </svg>
+      Deploy
+    </Button>
+  )}
+  {/* AI Autocomplete Toggle */}
+  <Button
+    onClick={() => setAiAutocompleteEnabled(!aiAutocompleteEnabled)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      aiAutocompleteEnabled
+        ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400'
+        : 'text-[#666666] hover:bg-[#3c3c3c]'
+    }`}
+    title={aiAutocompleteEnabled ? 'AI Autocomplete On (Tab to accept)' : 'AI Autocomplete Off'}
+  >
+    <Sparkles className="mr-1.5 h-4 w-4" />
+    Copilot
+    {isAutocompletLoading && (
+      <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+    )}
+  </Button>
   {/* AI Chat Button */}
   <Button
-  onClick={() => setShowAIPanel(!showAIPanel)}
-  size="sm"
-  variant="ghost"
-  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-  showAIPanel
-  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500'
-  : 'text-[#cccccc] hover:bg-[#3c3c3c]'
-  }`}
+    onClick={() => setShowAIPanel(!showAIPanel)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      showAIPanel
+        ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
   >
-  <MessageSquare className="mr-1.5 h-4 w-4" />
-  AI Chat
+    <MessageSquare className="mr-1.5 h-4 w-4" />
+    AI Chat
   </Button>
               <Button
                 onClick={saveFile}
@@ -1069,6 +1140,13 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     if (collaborationEnabled && projectId && activeFileDbId) {
       sendCollabUpdate(newCode)
     }
+    // Trigger AI autocomplete suggestion
+    if (aiAutocompleteEnabled && editorRef.current) {
+      const position = editorRef.current.getPosition()
+      if (position) {
+        getSuggestion(newCode, position.lineNumber, position.column)
+      }
+    }
   }}
   issues={codeIssues}
   onEditorReady={(editor) => {
@@ -1083,7 +1161,20 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     if (collaborationEnabled && projectId && activeFileDbId) {
       updateCollabCursor(position, selection)
     }
+    // Dismiss suggestion on cursor move
+    if (aiSuggestion) {
+      dismissSuggestion()
+    }
   }}
+  ghostText={aiSuggestion ? {
+    text: aiSuggestion,
+    position: editorRef.current?.getPosition() || { lineNumber: 1, column: 1 }
+  } : null}
+  onAcceptGhostText={() => {
+    const suggestion = acceptSuggestion()
+    return suggestion || ''
+  }}
+  onDismissGhostText={dismissSuggestion}
   />
   {/* Collaboration Cursors */}
   {collaborationEnabled && collaborators.length > 0 && (
@@ -1121,6 +1212,40 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                 }, 1000)
               }}
             />
+            {/* Snippets Panel */}
+            <SnippetsPanel
+              isOpen={showSnippetsPanel}
+              onClose={() => setShowSnippetsPanel(false)}
+              onInsertSnippet={(snippetCode) => {
+                // Insert snippet at cursor position or replace selection
+                if (editorRef.current) {
+                  const selection = editorRef.current.getSelection()
+                  if (selection) {
+                    editorRef.current.executeEdits('snippet-insert', [{
+                      range: selection,
+                      text: snippetCode,
+                    }])
+                  }
+                } else {
+                  // Fallback: append to code
+                  const newCode = code + '\n' + snippetCode
+                  setCode(newCode)
+                  handleCodeChange(newCode)
+                }
+                setShowSnippetsPanel(false)
+              }}
+              currentCode={code}
+              currentLanguage={language}
+            />
+            {/* Deployment Panel */}
+            {projectId && (
+              <DeploymentPanel
+                projectId={projectId}
+                projectName={project?.name || 'Project'}
+                isOpen={showDeploymentPanel}
+                onClose={() => setShowDeploymentPanel(false)}
+              />
+            )}
           </div>
 
 {/* Issues Panel */}
