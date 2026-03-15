@@ -93,7 +93,7 @@ export function IssuesPanel({ issues, isOpen, onClose, onGoToLine, onIgnoreIssue
   const infoCount = issues.filter(i => (i.severity === 'info' || i.severity === 'hint') && !(i.id && ignoredIssues.has(i.id))).length
 
   return (
-    <div className="absolute bottom-[280px] left-0 right-0 h-[200px] bg-[#1e1e1e] border-t border-[#191919] z-20 flex flex-col">
+    <div className="absolute bottom-[302px] left-[48px] right-0 h-[200px] bg-[#1e1e1e] border-t border-[#191919] z-20 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919]">
         <div className="flex items-center gap-2">
