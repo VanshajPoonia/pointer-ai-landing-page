@@ -11,7 +11,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import { AIToolsPanel } from './ai-tools-panel'
 import { CommandPalette, KeyboardShortcutsPanel, defaultShortcuts, useKeyboardShortcuts } from './command-palette'
 import { SettingsPanel, defaultSettings, EditorSettings } from './settings-panel'
 import { QuickOpen, GlobalSearch } from './file-search'
+import { DiffViewer } from './diff-viewer'
 import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
@@ -78,6 +79,9 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(defaultSettings)
   const [recentFiles, setRecentFiles] = useState<string[]>([])
+  const [showDiffViewer, setShowDiffViewer] = useState(false)
+  const [diffOriginalCode, setDiffOriginalCode] = useState('')
+  const [savedVersions, setSavedVersions] = useState<Record<string, string>>({})
   const [selectedCode, setSelectedCode] = useState('')
   const [aiAutocompleteEnabled, setAiAutocompleteEnabled] = useState(true)
   const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
@@ -1184,8 +1188,25 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   >
     <Settings className="h-4 w-4" />
   </Button>
+  {/* Diff Viewer Button */}
   <Button
-  onClick={saveFile}
+    onClick={() => {
+      // Store current code as original if we haven't saved a version
+      if (activeFileId && !savedVersions[activeFileId]) {
+        setSavedVersions(prev => ({ ...prev, [activeFileId]: code }))
+      }
+      setDiffOriginalCode(savedVersions[activeFileId] || code)
+      setShowDiffViewer(true)
+    }}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Compare Changes"
+  >
+    <GitCompare className="h-4 w-4" />
+  </Button>
+  <Button
+    onClick={saveFile}
                 size="sm"
                 variant="ghost"
                 className="h-[26px] px-3 text-[#cccccc] hover:bg-[#3c3c3c] text-[12px] rounded-[3px]"
@@ -1397,7 +1418,8 @@ ignoredIssues={ignoredIssues}
           { id: 'settings', name: 'Settings', shortcut: ['Cmd', ','], icon: <Settings className="h-4 w-4" />, category: 'settings', action: () => setShowSettingsPanel(true) },
           { id: 'shortcuts', name: 'Keyboard Shortcuts', shortcut: ['Cmd', 'K'], icon: <Keyboard className="h-4 w-4" />, category: 'settings', action: () => setShowKeyboardShortcuts(true) },
           { id: 'toggle-preview', name: 'Toggle Live Preview', icon: <Eye className="h-4 w-4" />, category: 'view', action: () => setShowLivePreview(!showLivePreview) },
-          { id: 'toggle-issues', name: 'Toggle Issues Panel', icon: <AlertCircle className="h-4 w-4" />, category: 'view', action: () => setShowIssuesPanel(!showIssuesPanel) },
+{ id: 'toggle-issues', name: 'Toggle Issues Panel', icon: <AlertCircle className="h-4 w-4" />, category: 'view', action: () => setShowIssuesPanel(!showIssuesPanel) },
+          { id: 'compare-changes', name: 'Compare Changes (Diff)', icon: <GitCompare className="h-4 w-4" />, category: 'view', action: () => { setDiffOriginalCode(savedVersions[activeFileId || ''] || code); setShowDiffViewer(true) } },
         ]}
       />
 
@@ -1457,6 +1479,17 @@ ignoredIssues={ignoredIssues}
           // Jump to line (would need editor integration)
           setShowGlobalSearch(false)
         }}
+      />
+
+      {/* Diff Viewer */}
+      <DiffViewer
+        isOpen={showDiffViewer}
+        onClose={() => setShowDiffViewer(false)}
+        originalCode={diffOriginalCode}
+        modifiedCode={code}
+        originalTitle={activeFileId ? `${fileSystem.nodes[activeFileId]?.name} (saved)` : 'Original'}
+        modifiedTitle={activeFileId ? `${fileSystem.nodes[activeFileId]?.name} (current)` : 'Modified'}
+        language={language}
       />
     </div>
   )
