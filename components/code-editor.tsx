@@ -17,15 +17,28 @@ export interface CodeIssue {
   ignored?: boolean
 }
 
+interface CursorPosition {
+  line: number
+  column: number
+}
+
+interface Selection {
+  startLine: number
+  startColumn: number
+  endLine: number
+  endColumn: number
+}
+
 interface CodeEditorProps {
   value: string
   language: string
   onChange: (value: string) => void
   issues?: CodeIssue[]
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void
+  onCursorChange?: (position: CursorPosition, selection?: Selection) => void
 }
 
-export function CodeEditor({ value, language, onChange, issues = [], onEditorReady }: CodeEditorProps) {
+export function CodeEditor({ value, language, onChange, issues = [], onEditorReady, onCursorChange }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null)
 
@@ -34,6 +47,25 @@ export function CodeEditor({ value, language, onChange, issues = [], onEditorRea
     monacoRef.current = monaco
     if (onEditorReady) {
       onEditorReady(editor)
+    }
+
+    // Listen for cursor position changes
+    if (onCursorChange) {
+      editor.onDidChangeCursorPosition((e) => {
+        const selection = editor.getSelection()
+        const position = { line: e.position.lineNumber - 1, column: e.position.column - 1 }
+        
+        if (selection && !selection.isEmpty()) {
+          onCursorChange(position, {
+            startLine: selection.startLineNumber - 1,
+            startColumn: selection.startColumn - 1,
+            endLine: selection.endLineNumber - 1,
+            endColumn: selection.endColumn - 1,
+          })
+        } else {
+          onCursorChange(position)
+        }
+      })
     }
   }
 

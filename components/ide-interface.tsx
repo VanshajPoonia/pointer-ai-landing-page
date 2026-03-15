@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { CodeEditor } from './code-editor'
-import { Terminal } from './terminal'
+import { XTermTerminal } from './xterm-terminal'
+import { useCollaboration } from '@/hooks/use-collaboration'
+import { CollaborationCursors, CollaboratorPresence } from './collaboration-cursors'
 import { FileExplorer } from './file-explorer'
 import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
@@ -68,11 +70,35 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [previewContent, setPreviewContent] = useState<{ html: string; css: string; js: string }>({ html: '', css: '', js: '' })
   const [project, setProject] = useState<ProjectData | null>(null)
   const [loadingProject, setLoadingProject] = useState(!!projectId)
+  const [collaborationEnabled, setCollaborationEnabled] = useState(false)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
   const supabase = createClient()
+
+  // Get current file's database ID for collaboration
+  const activeFileDbId = activeFileId ? fileSystem.nodes[activeFileId]?.dbId : undefined
+
+  // Collaboration hook - only active when we have a project, user, and active file
+  const {
+    collaborators,
+    isConnected: isCollabConnected,
+    sendUpdate: sendCollabUpdate,
+    updateCursor: updateCollabCursor,
+    initializeContent: initCollabContent,
+    userColor,
+  } = useCollaboration({
+    fileId: activeFileDbId || '',
+    projectId: projectId || '',
+    userId: user?.id || '',
+    userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
+    onRemoteChange: (content) => {
+      if (collaborationEnabled) {
+        setCode(content)
+      }
+    },
+  })
 
   // Load project data from Supabase
   const loadProjectData = async () => {
@@ -965,20 +991,51 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                   Preview
                 </Button>
               )}
-              {/* AI Chat Button */}
-              <Button
-                onClick={() => setShowAIPanel(!showAIPanel)}
-                size="sm"
-                variant="ghost"
-                className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-                  showAIPanel 
-                    ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500' 
-                    : 'text-[#cccccc] hover:bg-[#3c3c3c]'
-                }`}
-              >
-                <MessageSquare className="mr-1.5 h-4 w-4" />
-                AI Chat
-              </Button>
+ {/* Collaboration Button - Only when project is loaded */}
+  {projectId && user && activeFileDbId && (
+    <>
+      <Button
+        onClick={() => setCollaborationEnabled(!collaborationEnabled)}
+        size="sm"
+        variant="ghost"
+        className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+          collaborationEnabled
+            ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-400'
+            : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+        }`}
+        title={collaborationEnabled ? 'Collaboration enabled' : 'Enable collaboration'}
+      >
+        <svg className="mr-1.5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Collab
+        {isCollabConnected && collaborationEnabled && (
+          <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-green-500" />
+        )}
+      </Button>
+      {/* Collaborator Presence */}
+      {collaborationEnabled && collaborators.length > 0 && (
+        <CollaboratorPresence collaborators={collaborators} />
+      )}
+    </>
+  )}
+  {/* AI Chat Button */}
+  <Button
+  onClick={() => setShowAIPanel(!showAIPanel)}
+  size="sm"
+  variant="ghost"
+  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+  showAIPanel
+  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500'
+  : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+  }`}
+  >
+  <MessageSquare className="mr-1.5 h-4 w-4" />
+  AI Chat
+  </Button>
               <Button
                 onClick={saveFile}
                 size="sm"
@@ -1003,15 +1060,38 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
           {/* Editor Area */}
           <div className="flex-1 min-h-0 flex overflow-hidden">
             <div className="flex-1 min-w-0 overflow-hidden">
-              <CodeEditor
-                value={code}
-                language={language}
-                onChange={handleCodeChange}
-                issues={codeIssues}
-                onEditorReady={(editor) => {
-                  editorRef.current = editor
-                }}
-              />
+ <CodeEditor
+  value={code}
+  language={language}
+  onChange={(newCode) => {
+    handleCodeChange(newCode)
+    // Send to collaborators
+    if (collaborationEnabled && projectId && activeFileDbId) {
+      sendCollabUpdate(newCode)
+    }
+  }}
+  issues={codeIssues}
+  onEditorReady={(editor) => {
+    editorRef.current = editor
+    // Initialize collaboration content when editor is ready
+    if (collaborationEnabled && code) {
+      initCollabContent(code)
+    }
+  }}
+  onCursorChange={(position, selection) => {
+    // Update cursor position for collaborators
+    if (collaborationEnabled && projectId && activeFileDbId) {
+      updateCollabCursor(position, selection)
+    }
+  }}
+  />
+  {/* Collaboration Cursors */}
+  {collaborationEnabled && collaborators.length > 0 && (
+    <CollaborationCursors 
+      collaborators={collaborators} 
+      editorRef={editorRef} 
+    />
+  )}
             </div>
             {/* Live Preview Panel - Only for web projects */}
             {(!project || project.template === 'web') && (
@@ -1064,11 +1144,11 @@ ignoredIssues={ignoredIssues}
           {/* Bottom Panel - Terminal and Output */}
           <div className="h-[280px] border-t border-[#191919] flex">
             <div className="flex-[2] min-w-0">
-              <Terminal 
-                onClear={() => setOutput('')}
-                fileSystem={fileSystem}
-                onUpdateFileSystem={setFileSystem}
-              />
+ <XTermTerminal
+  onClear={() => setOutput('')}
+  fileSystem={fileSystem}
+  onUpdateFileSystem={setFileSystem}
+  />
             </div>
             <div className="flex-1 min-w-[300px] border-l border-[#191919]">
               <OutputPanel output={output} />
