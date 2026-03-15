@@ -58,64 +58,58 @@ interface EnvManagerProps {
   onExport?: (env: string) => void
 }
 
+const defaultVariables: EnvVariable[] = [
+  {
+    id: '1',
+    key: 'DATABASE_URL',
+    value: 'postgresql://user:password@localhost:5432/db',
+    isSecret: true,
+    environment: 'all',
+    description: 'Database connection string',
+    lastModified: new Date()
+  },
+  {
+    id: '2',
+    key: 'NEXT_PUBLIC_API_URL',
+    value: 'https://api.example.com',
+    isSecret: false,
+    environment: 'production',
+    description: 'Public API endpoint',
+    lastModified: new Date()
+  },
+  {
+    id: '3',
+    key: 'JWT_SECRET',
+    value: 'super-secret-jwt-key-here',
+    isSecret: true,
+    environment: 'all',
+    description: 'JWT signing secret',
+    lastModified: new Date()
+  },
+  {
+    id: '4',
+    key: 'NEXT_PUBLIC_APP_NAME',
+    value: 'Pointer IDE',
+    isSecret: false,
+    environment: 'all',
+    description: 'Application name',
+    lastModified: new Date()
+  }
+]
+
 export function EnvManager({
   isOpen,
   onClose,
-  variables: initialVariables = [],
   onSave,
   onExport,
   onImport
 }: EnvManagerProps) {
-  const [variables, setVariables] = useState<EnvVariable[]>(initialVariables)
+  const [variables, setVariables] = useState<EnvVariable[]>(defaultVariables)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterEnv, setFilterEnv] = useState<string>('all')
   const [hasChanges, setHasChanges] = useState(false)
-
-  // Initialize with some default env vars
-  useEffect(() => {
-    if (initialVariables.length === 0) {
-      setVariables([
-        {
-          id: '1',
-          key: 'DATABASE_URL',
-          value: 'postgresql://user:password@localhost:5432/db',
-          isSecret: true,
-          environment: 'all',
-          description: 'Database connection string',
-          lastModified: new Date()
-        },
-        {
-          id: '2',
-          key: 'NEXT_PUBLIC_API_URL',
-          value: 'https://api.example.com',
-          isSecret: false,
-          environment: 'production',
-          description: 'Public API endpoint',
-          lastModified: new Date()
-        },
-        {
-          id: '3',
-          key: 'JWT_SECRET',
-          value: 'super-secret-jwt-key-here',
-          isSecret: true,
-          environment: 'all',
-          description: 'JWT signing secret',
-          lastModified: new Date()
-        },
-        {
-          id: '4',
-          key: 'NEXT_PUBLIC_APP_NAME',
-          value: 'Pointer IDE',
-          isSecret: false,
-          environment: 'all',
-          description: 'Application name',
-          lastModified: new Date()
-        }
-      ])
-    }
-  }, [initialVariables])
 
   const addVariable = () => {
     const newVar: EnvVariable = {
