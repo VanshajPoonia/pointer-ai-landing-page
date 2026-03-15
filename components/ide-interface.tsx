@@ -45,7 +45,17 @@ import { LinterPanel, useLinter } from './linter-panel'
 import { ImportOrganizer } from './import-organizer'
 import { CodeCoverageViewer, generateMockReport, CoverageReport } from './code-coverage'
 import { TypeCheckerPanel, useTypeChecker } from './type-checker'
-import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon } from 'lucide-react'
+import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon, GitMerge, Archive, GitPullRequest, MessageCircle, Code2, Maximize, Layout, PictureInPicture, Bug } from 'lucide-react'
+// Additional feature imports
+import { MergeConflictResolver } from './merge-conflict-resolver'
+import { StashManager, useStashManager } from './stash-manager'
+import { AIPRReview } from './ai-pr-review'
+import { CodebaseChat } from './codebase-chat'
+import { NaturalLanguageToCode } from './natural-language-to-code'
+import { DebuggerPanel, useDebugger } from './debugger-panel'
+import { ZenMode, useZenMode } from './zen-mode'
+import { CustomLayouts, useCustomLayouts, PanelConfig } from './custom-layouts'
+import { PiPPreview, usePiPPreview } from './pip-preview'
 
 interface IDEInterfaceProps {
   projectId?: string
@@ -120,6 +130,14 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [coverageReport, setCoverageReport] = useState<CoverageReport | null>(null)
   const [isRunningTests, setIsRunningTests] = useState(false)
   const [cursorLine, setCursorLine] = useState(1)
+  // More new features state
+  const [showMergeResolver, setShowMergeResolver] = useState(false)
+  const [showStashManager, setShowStashManager] = useState(false)
+  const [showPRReview, setShowPRReview] = useState(false)
+  const [showCodebaseChat, setShowCodebaseChat] = useState(false)
+  const [showNLToCode, setShowNLToCode] = useState(false)
+  const [showDebugger, setShowDebugger] = useState(false)
+  const [showCustomLayouts, setShowCustomLayouts] = useState(false)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
@@ -130,6 +148,22 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const bookmarks = useBookmarks()
   const linter = useLinter(code, language)
   const typeChecker = useTypeChecker(code, language)
+  const stashManager = useStashManager()
+  const debugger_ = useDebugger()
+  const zenMode = useZenMode()
+  const pipPreview = usePiPPreview()
+  const layoutConfig = useCustomLayouts({
+    sidebar: true,
+    sidebarWidth: 250,
+    terminal: true,
+    terminalHeight: 200,
+    preview: true,
+    previewWidth: 400,
+    aiPanel: false,
+    aiPanelWidth: 350,
+    outputPanel: true,
+    debugPanel: false
+  })
 
   // Get current file's database ID for collaboration
   const activeFileDbId = activeFileId ? fileSystem.nodes[activeFileId]?.dbId : undefined
@@ -155,6 +189,10 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       }
     },
     'cmd+shift+o': () => setShowImportOrganizer(true),
+    'cmd+shift+z': () => zenMode.toggleZenMode(),
+    'f5': () => debugger_.isDebugging ? debugger_.continueExecution() : debugger_.startDebugging(),
+    'f10': () => debugger_.stepOver(),
+    'f11': () => debugger_.stepInto(),
   })
 
   // Track recent files
@@ -1352,22 +1390,105 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   >
     <BarChart3 className="h-4 w-4" />
   </Button>
-  {/* Type Checker Button */}
+{/* Type Checker Button */}
   <Button
-    onClick={() => setShowTypeChecker(true)}
+  onClick={() => setShowTypeChecker(true)}
+  size="sm"
+  variant="ghost"
+  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+  typeChecker.errors.filter(e => e.severity === 'error').length > 0
+  ? 'text-red-400'
+  : typeChecker.errors.length > 0
+  ? 'text-yellow-400'
+  : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+  }`}
+  title="TypeScript Type Checker"
+  >
+  <TypeErrorIcon className="h-4 w-4" />
+  {typeChecker.errors.length > 0 && (
+    <span className="ml-1 text-[10px]">{typeChecker.errors.length}</span>
+  )}
+  </Button>
+  {/* Debugger Button */}
+  <Button
+    onClick={() => setShowDebugger(!showDebugger)}
     size="sm"
     variant="ghost"
     className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-      typeChecker.errors.filter(e => e.severity === 'error').length > 0
-        ? 'text-red-400'
-        : typeChecker.errors.length > 0
-        ? 'text-yellow-400'
+      debugger_.isDebugging
+        ? debugger_.isPaused
+          ? 'text-yellow-400 bg-yellow-500/10'
+          : 'text-green-400 bg-green-500/10'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
     }`}
-    title="TypeScript Type Checker"
+    title="Debugger"
   >
-    <TypeErrorIcon className="h-4 w-4" />
-    {typeChecker.errors.length > 0 && (
+    <Bug className="h-4 w-4" />
+  </Button>
+  {/* AI PR Review Button */}
+  <Button
+    onClick={() => setShowPRReview(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="AI Code Review"
+  >
+    <GitPullRequest className="h-4 w-4" />
+  </Button>
+  {/* Codebase Chat Button */}
+  <Button
+    onClick={() => setShowCodebaseChat(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Codebase Chat"
+  >
+    <MessageCircle className="h-4 w-4" />
+  </Button>
+  {/* NL to Code Button */}
+  <Button
+    onClick={() => setShowNLToCode(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Natural Language to Code"
+  >
+    <Code2 className="h-4 w-4" />
+  </Button>
+  <div className="w-px h-4 bg-[#3c3c3c] mx-1" />
+  {/* Zen Mode Button */}
+  <Button
+    onClick={zenMode.toggleZenMode}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Zen Mode (Cmd+Shift+Z)"
+  >
+    <Maximize className="h-4 w-4" />
+  </Button>
+  {/* Custom Layouts Button */}
+  <Button
+    onClick={() => setShowCustomLayouts(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Workspace Layouts"
+  >
+    <Layout className="h-4 w-4" />
+  </Button>
+  {/* PiP Preview Button */}
+  <Button
+    onClick={() => pipPreview.openPiP('/api/preview')}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      pipPreview.isOpen ? 'text-blue-400 bg-blue-500/10' : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Picture-in-Picture Preview"
+  >
+    <PictureInPicture className="h-4 w-4" />
+  </Button>
+  {typeChecker.errors.length > 0 && (
       <span className="ml-1 text-[10px]">{typeChecker.errors.length}</span>
     )}
   </Button>
@@ -1946,6 +2067,194 @@ ignoredIssues={ignoredIssues}
           }
         }}
       />
+
+      {/* Merge Conflict Resolver */}
+      <MergeConflictResolver
+        isOpen={showMergeResolver}
+        onClose={() => setShowMergeResolver(false)}
+        fileName={activeFileId ? fileSystem.nodes[activeFileId]?.name || 'file' : 'file'}
+        currentCode={code}
+        incomingCode={savedVersions[activeFileId || ''] || code}
+        baseCode={code}
+        onResolve={(resolvedCode) => {
+          setCode(resolvedCode)
+          handleCodeChange(resolvedCode)
+          setShowMergeResolver(false)
+        }}
+      />
+
+      {/* Stash Manager */}
+      <StashManager
+        isOpen={showStashManager}
+        onClose={() => setShowStashManager(false)}
+        stashes={stashManager.stashes}
+        onCreateStash={(message) => {
+          stashManager.createStash(message, Object.values(fileSystem.nodes).filter(n => n.type === 'file').map(n => ({
+            fileId: n.id,
+            fileName: n.name,
+            content: n.content || ''
+          })))
+        }}
+        onApplyStash={(id) => {
+          const stash = stashManager.stashes.find(s => s.id === id)
+          if (stash && stash.files.length > 0) {
+            const file = stash.files[0]
+            setCode(file.content)
+            handleCodeChange(file.content)
+          }
+          stashManager.applyStash(id)
+        }}
+        onDropStash={stashManager.dropStash}
+        onPopStash={stashManager.popStash}
+      />
+
+      {/* AI PR Review */}
+      <AIPRReview
+        isOpen={showPRReview}
+        onClose={() => setShowPRReview(false)}
+        code={code}
+        originalCode={savedVersions[activeFileId || '']}
+        fileName={activeFileId ? fileSystem.nodes[activeFileId]?.name || 'file' : 'file'}
+        language={language}
+        onApplySuggestion={(suggestion) => {
+          setCode(suggestion)
+          handleCodeChange(suggestion)
+        }}
+      />
+
+      {/* Codebase Chat */}
+      <CodebaseChat
+        isOpen={showCodebaseChat}
+        onClose={() => setShowCodebaseChat(false)}
+        files={Object.values(fileSystem.nodes).filter(n => n.type === 'file').map(n => ({
+          id: n.id,
+          name: n.name,
+          path: getNodePath(fileSystem, n.id),
+          content: n.content
+        }))}
+        currentFile={activeFileId ? {
+          id: activeFileId,
+          name: fileSystem.nodes[activeFileId]?.name || 'file',
+          path: getNodePath(fileSystem, activeFileId),
+          content: code
+        } : undefined}
+        onNavigateToFile={(fileId) => {
+          setActiveFileId(fileId)
+          const node = fileSystem.nodes[fileId]
+          if (node?.content) setCode(node.content)
+        }}
+        onInsertCode={(insertCode) => {
+          if (editorRef.current) {
+            const position = editorRef.current.getPosition()
+            editorRef.current.executeEdits('codebase-chat', [{
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+              },
+              text: insertCode
+            }])
+          }
+        }}
+      />
+
+      {/* Natural Language to Code */}
+      <NaturalLanguageToCode
+        isOpen={showNLToCode}
+        onClose={() => setShowNLToCode(false)}
+        language={language}
+        currentCode={selectedCode || code}
+        onInsertCode={(insertCode) => {
+          if (editorRef.current) {
+            const position = editorRef.current.getPosition()
+            editorRef.current.executeEdits('nl-to-code', [{
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+              },
+              text: '\n' + insertCode + '\n'
+            }])
+          }
+          setShowNLToCode(false)
+        }}
+        onReplaceCode={(newCode) => {
+          setCode(newCode)
+          handleCodeChange(newCode)
+        }}
+      />
+
+      {/* Custom Layouts */}
+      <CustomLayouts
+        isOpen={showCustomLayouts}
+        onClose={() => setShowCustomLayouts(false)}
+        currentConfig={layoutConfig.config}
+        onApplyLayout={layoutConfig.applyLayout}
+        onSaveLayout={(name, config) => {
+          console.log('[v0] Saved layout:', name, config)
+        }}
+      />
+
+      {/* PiP Preview */}
+      <PiPPreview
+        isOpen={pipPreview.isOpen}
+        onClose={pipPreview.closePiP}
+        previewUrl={pipPreview.previewUrl || '/api/preview'}
+        onRefresh={() => {
+          // Trigger preview refresh
+        }}
+      />
+
+      {/* Zen Mode */}
+      <ZenMode isActive={zenMode.isZenMode} onExit={zenMode.exitZenMode}>
+        <CodeEditor
+          code={code}
+          onChange={handleCodeChange}
+          language={language}
+          issues={codeIssues}
+          onEditorReady={(editor) => { editorRef.current = editor }}
+        />
+      </ZenMode>
+
+      {/* Debugger Panel - Fixed position */}
+      {showDebugger && (
+        <div className="fixed right-0 top-[50px] bottom-0 w-80 z-40 shadow-xl">
+          <DebuggerPanel
+            breakpoints={debugger_.breakpoints}
+            onAddBreakpoint={debugger_.addBreakpoint}
+            onRemoveBreakpoint={debugger_.removeBreakpoint}
+            onToggleBreakpoint={debugger_.toggleBreakpoint}
+            onClearBreakpoints={debugger_.clearBreakpoints}
+            onNavigateToBreakpoint={(bp) => {
+              setActiveFileId(bp.fileId)
+              const node = fileSystem.nodes[bp.fileId]
+              if (node?.content) {
+                setCode(node.content)
+                setTimeout(() => {
+                  if (editorRef.current) {
+                    editorRef.current.revealLineInCenter(bp.line)
+                    editorRef.current.setPosition({ lineNumber: bp.line, column: 1 })
+                  }
+                }, 100)
+              }
+            }}
+            isDebugging={debugger_.isDebugging}
+            isPaused={debugger_.isPaused}
+            onStartDebugging={debugger_.startDebugging}
+            onStopDebugging={debugger_.stopDebugging}
+            onContinue={debugger_.continueExecution}
+            onStepOver={debugger_.stepOver}
+            onStepInto={debugger_.stepInto}
+            onStepOut={debugger_.stepOut}
+            callStack={debugger_.callStack}
+            variables={debugger_.variables}
+            onStackFrameSelect={debugger_.setCurrentFrame}
+            currentFrame={debugger_.currentFrame}
+          />
+        </div>
+      )}
     </div>
   )
 }
