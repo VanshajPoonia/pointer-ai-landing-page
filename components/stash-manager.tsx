@@ -241,7 +241,7 @@ export function StashManager({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs text-yellow-400 font-mono">
-                              stash@{{{index}}}
+                              {`stash@{${index}}`}
                             </span>
                             <span className="text-xs text-[#808080]">on</span>
                             <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-blue-400 border-blue-500/30">

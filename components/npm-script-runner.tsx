@@ -388,8 +388,7 @@ function ScriptItem({
   onExpand: () => void
   onCopy: () => void
   formatDuration: (start: Date, end?: Date) => string
-})
-
+}) {
   return (
     <div className="bg-[#252526] rounded-lg border border-[#3c3c3c] overflow-hidden">
       <div className="flex items-center gap-2 p-2">
