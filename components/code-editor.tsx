@@ -29,6 +29,11 @@ interface Selection {
   endColumn: number
 }
 
+interface GhostTextSuggestion {
+  text: string
+  position: { lineNumber: number; column: number }
+}
+
 interface CodeEditorProps {
   value: string
   language: string
@@ -36,11 +41,25 @@ interface CodeEditorProps {
   issues?: CodeIssue[]
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void
   onCursorChange?: (position: CursorPosition, selection?: Selection) => void
+  ghostText?: GhostTextSuggestion | null
+  onAcceptGhostText?: () => string
+  onDismissGhostText?: () => void
 }
 
-export function CodeEditor({ value, language, onChange, issues = [], onEditorReady, onCursorChange }: CodeEditorProps) {
+export function CodeEditor({ 
+  value, 
+  language, 
+  onChange, 
+  issues = [], 
+  onEditorReady, 
+  onCursorChange,
+  ghostText,
+  onAcceptGhostText,
+  onDismissGhostText,
+}: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null)
+  const ghostTextDecorationsRef = useRef<string[]>([])
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
@@ -67,7 +86,74 @@ export function CodeEditor({ value, language, onChange, issues = [], onEditorRea
         }
       })
     }
+
+    // Add Tab key handler for accepting ghost text
+    editor.addCommand(monaco.KeyCode.Tab, () => {
+      if (ghostText && onAcceptGhostText) {
+        const suggestion = onAcceptGhostText()
+        if (suggestion) {
+          const position = editor.getPosition()
+          if (position) {
+            editor.executeEdits('ai-autocomplete', [{
+              range: new monaco.Range(
+                position.lineNumber,
+                position.column,
+                position.lineNumber,
+                position.column
+              ),
+              text: suggestion,
+            }])
+          }
+          return
+        }
+      }
+      // Default Tab behavior
+      editor.trigger('keyboard', 'tab', {})
+    })
+
+    // Add Escape key handler for dismissing ghost text
+    editor.addCommand(monaco.KeyCode.Escape, () => {
+      if (ghostText && onDismissGhostText) {
+        onDismissGhostText()
+      }
+    })
   }
+
+  // Render ghost text (AI suggestion) as inline decoration
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return
+    
+    const editor = editorRef.current
+    const monaco = monacoRef.current
+
+    // Clear previous ghost text decorations
+    if (ghostTextDecorationsRef.current.length > 0) {
+      editor.removeDecorations(ghostTextDecorationsRef.current)
+      ghostTextDecorationsRef.current = []
+    }
+
+    if (ghostText && ghostText.text) {
+      // Create inline decoration for ghost text
+      const decorations = editor.createDecorationsCollection([
+        {
+          range: new monaco.Range(
+            ghostText.position.lineNumber,
+            ghostText.position.column,
+            ghostText.position.lineNumber,
+            ghostText.position.column
+          ),
+          options: {
+            after: {
+              content: ghostText.text,
+              inlineClassName: 'ai-ghost-text',
+            },
+            description: 'ai-autocomplete-ghost-text',
+          },
+        },
+      ])
+      ghostTextDecorationsRef.current = decorations.getRanges().map(() => '')
+    }
+  }, [ghostText])
 
   // Update markers when issues change
   useEffect(() => {
