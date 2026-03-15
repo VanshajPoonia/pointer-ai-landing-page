@@ -355,6 +355,19 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
     }
   }, [activeTab, tabs, onUpdateFileSystem])
 
+  // Refs for stable callbacks
+  const executeCommandRef = useRef(executeCommand)
+  const getCompletionsRef = useRef(getCompletions)
+  const tabsRef = useRef(tabs)
+  const activeTabRef = useRef(activeTab)
+
+  useEffect(() => {
+    executeCommandRef.current = executeCommand
+    getCompletionsRef.current = getCompletions
+    tabsRef.current = tabs
+    activeTabRef.current = activeTab
+  }, [executeCommand, getCompletions, tabs, activeTab])
+
   // Initialize xterm
   useEffect(() => {
     if (!terminalRef.current || xtermRef.current) return
@@ -426,15 +439,15 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
         if (command) {
           // Add to history
           setTabs(prev => prev.map(tab => {
-            if (tab.id === activeTab) {
+            if (tab.id === activeTabRef.current) {
               return { ...tab, history: [...tab.history, command], historyIndex: -1 }
             }
             return tab
           }))
           historyIndexRef.current = -1
           
-          // Execute command
-          const output = executeCommand(command)
+          // Execute command using ref
+          const output = executeCommandRef.current(command)
           if (output) {
             if (output === '\x1b[2J\x1b[H') {
               term.clear()
@@ -454,7 +467,7 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
         ev.preventDefault()
         const parts = inputBufferRef.current.split(' ')
         const lastPart = parts[parts.length - 1]
-        const completions = getCompletions(lastPart)
+        const completions = getCompletionsRef.current(lastPart)
         
         if (completions.length === 1) {
           const completion = completions[0]
@@ -468,7 +481,7 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
           term.write(inputBufferRef.current)
         }
       } else if (ev.key === 'ArrowUp') {
-        const tab = tabs.find(t => t.id === activeTab)
+        const tab = tabsRef.current.find(t => t.id === activeTabRef.current)
         if (tab && tab.history.length > 0) {
           const newIndex = historyIndexRef.current < tab.history.length - 1 
             ? historyIndexRef.current + 1 
@@ -487,7 +500,7 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
           term.write(historyCmd)
         }
       } else if (ev.key === 'ArrowDown') {
-        const tab = tabs.find(t => t.id === activeTab)
+        const tab = tabsRef.current.find(t => t.id === activeTabRef.current)
         if (tab) {
           const newIndex = historyIndexRef.current > 0 ? historyIndexRef.current - 1 : -1
           historyIndexRef.current = newIndex
@@ -529,7 +542,8 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
       xtermRef.current = null
       fitAddonRef.current = null
     }
-  }, [activeTab, executeCommand, getCompletions, tabs])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Fit terminal on container resize
   useEffect(() => {
@@ -615,8 +629,9 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
       {/* Terminal container */}
       <div 
         ref={terminalRef} 
-        className="flex-1 p-2 overflow-hidden"
+        className="flex-1 p-2 overflow-hidden cursor-text"
         style={{ minHeight: 0 }}
+        onClick={() => xtermRef.current?.focus()}
       />
     </div>
   )
