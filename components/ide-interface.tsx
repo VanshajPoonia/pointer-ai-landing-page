@@ -38,6 +38,14 @@ import { AIRefactoringPanel } from './ai-refactoring-panel'
 import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
+// New feature imports
+import { BreadcrumbNavigation, BreadcrumbSymbol } from './breadcrumb-navigation'
+import { BookmarksPanel, useBookmarks, BookmarkItem } from './bookmarks-panel'
+import { LinterPanel, useLinter } from './linter-panel'
+import { ImportOrganizer } from './import-organizer'
+import { CodeCoverageViewer, generateMockReport, CoverageReport } from './code-coverage'
+import { TypeCheckerPanel, useTypeChecker } from './type-checker'
+import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon } from 'lucide-react'
 
 interface IDEInterfaceProps {
   projectId?: string
@@ -103,11 +111,25 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showFileHistory, setShowFileHistory] = useState(false)
   const [showRefactoringPanel, setShowRefactoringPanel] = useState(false)
   const [showDocumentOutline, setShowDocumentOutline] = useState(false)
+  // Additional new features state
+  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false)
+  const [showLinterPanel, setShowLinterPanel] = useState(false)
+  const [showImportOrganizer, setShowImportOrganizer] = useState(false)
+  const [showCoverageViewer, setShowCoverageViewer] = useState(false)
+  const [showTypeChecker, setShowTypeChecker] = useState(false)
+  const [coverageReport, setCoverageReport] = useState<CoverageReport | null>(null)
+  const [isRunningTests, setIsRunningTests] = useState(false)
+  const [cursorLine, setCursorLine] = useState(1)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
   const supabase = createClient()
+
+  // New feature hooks
+  const bookmarks = useBookmarks()
+  const linter = useLinter(code, language)
+  const typeChecker = useTypeChecker(code, language)
 
   // Get current file's database ID for collaboration
   const activeFileDbId = activeFileId ? fileSystem.nodes[activeFileId]?.dbId : undefined
@@ -121,6 +143,18 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     'cmd+shift+a': () => setShowAIPanel(!showAIPanel),
     'cmd+,': () => setShowSettingsPanel(true),
     'cmd+k': () => setShowKeyboardShortcuts(true),
+    // New feature shortcuts
+    'cmd+shift+b': () => {
+      // Toggle bookmark at current line
+      if (activeFileId) {
+        const node = fileSystem.nodes[activeFileId]
+        if (node) {
+          const preview = code.split('\n')[cursorLine - 1]?.trim() || ''
+          bookmarks.toggleBookmarkAtLine(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
+        }
+      }
+    },
+    'cmd+shift+o': () => setShowImportOrganizer(true),
   })
 
   // Track recent files
@@ -1248,18 +1282,97 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   >
     <ListTree className="h-4 w-4" />
   </Button>
-  {/* AI Refactoring Button */}
+{/* AI Refactoring Button */}
   <Button
-    onClick={() => setShowRefactoringPanel(true)}
+  onClick={() => setShowRefactoringPanel(true)}
+  size="sm"
+  variant="ghost"
+  className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+  title="AI Refactoring"
+  >
+  <Wand2 className="h-4 w-4" />
+  </Button>
+  {/* Bookmarks Button */}
+  <Button
+    onClick={() => setShowBookmarksPanel(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      bookmarks.bookmarks.length > 0
+        ? 'text-blue-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Bookmarks (Cmd+Shift+B to toggle)"
+  >
+    <Bookmark className="h-4 w-4" />
+    {bookmarks.bookmarks.length > 0 && (
+      <span className="ml-1 text-[10px]">{bookmarks.bookmarks.length}</span>
+    )}
+  </Button>
+  {/* Linter Panel Button */}
+  <Button
+    onClick={() => setShowLinterPanel(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      linter.issues.filter(i => i.severity === 'error').length > 0
+        ? 'text-red-400'
+        : linter.issues.filter(i => i.severity === 'warning').length > 0
+        ? 'text-yellow-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="ESLint/Prettier"
+  >
+    <AlertCircle className="h-4 w-4" />
+    {linter.issues.length > 0 && (
+      <span className="ml-1 text-[10px]">{linter.issues.length}</span>
+    )}
+  </Button>
+  {/* Import Organizer Button */}
+  <Button
+    onClick={() => setShowImportOrganizer(true)}
     size="sm"
     variant="ghost"
     className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
-    title="AI Refactoring"
+    title="Organize Imports (Cmd+Shift+O)"
   >
-    <Wand2 className="h-4 w-4" />
+    <Package className="h-4 w-4" />
+  </Button>
+  {/* Code Coverage Button */}
+  <Button
+    onClick={() => setShowCoverageViewer(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      coverageReport
+        ? 'text-green-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Code Coverage"
+  >
+    <BarChart3 className="h-4 w-4" />
+  </Button>
+  {/* Type Checker Button */}
+  <Button
+    onClick={() => setShowTypeChecker(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      typeChecker.errors.filter(e => e.severity === 'error').length > 0
+        ? 'text-red-400'
+        : typeChecker.errors.length > 0
+        ? 'text-yellow-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="TypeScript Type Checker"
+  >
+    <TypeErrorIcon className="h-4 w-4" />
+    {typeChecker.errors.length > 0 && (
+      <span className="ml-1 text-[10px]">{typeChecker.errors.length}</span>
+    )}
   </Button>
   <Button
-    onClick={saveFile}
+  onClick={saveFile}
                 size="sm"
                 variant="ghost"
                 className="h-[26px] px-3 text-[#cccccc] hover:bg-[#3c3c3c] text-[12px] rounded-[3px]"
@@ -1279,10 +1392,26 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
             </div>
           </div>
 
-          {/* Editor Area */}
-          <div className="flex-1 min-h-0 flex overflow-hidden">
-            <div className="flex-1 min-w-0 overflow-hidden">
- <CodeEditor
+{/* Editor Area */}
+  <div className="flex-1 min-h-0 flex overflow-hidden">
+  <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+  {/* Breadcrumb Navigation */}
+  {activeFileId && (
+    <BreadcrumbNavigation
+      filePath={getNodePath(fileSystem, activeFileId)}
+      code={code}
+      cursorLine={cursorLine}
+      onNavigate={(symbol) => {
+        if (symbol.line && editorRef.current) {
+          editorRef.current.revealLineInCenter(symbol.line)
+          editorRef.current.setPosition({ lineNumber: symbol.line, column: 1 })
+          editorRef.current.focus()
+        }
+      }}
+    />
+  )}
+  <div className="flex-1 min-h-0">
+  <CodeEditor
   value={code}
   language={language}
   onChange={(newCode) => {
@@ -1307,15 +1436,17 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       initCollabContent(code)
     }
   }}
-  onCursorChange={(position, selection) => {
-    // Update cursor position for collaborators
-    if (collaborationEnabled && projectId && activeFileDbId) {
-      updateCollabCursor(position, selection)
-    }
-    // Dismiss suggestion on cursor move
-    if (aiSuggestion) {
-      dismissSuggestion()
-    }
+onCursorChange={(position, selection) => {
+  // Track cursor line for breadcrumb navigation
+  setCursorLine(position.lineNumber)
+  // Update cursor position for collaborators
+  if (collaborationEnabled && projectId && activeFileDbId) {
+  updateCollabCursor(position, selection)
+  }
+  // Dismiss suggestion on cursor move
+  if (aiSuggestion) {
+  dismissSuggestion()
+  }
   }}
   ghostText={aiSuggestion ? {
     text: aiSuggestion,
@@ -1328,15 +1459,16 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   onDismissGhostText={dismissSuggestion}
   onSelectionChange={(text) => setSelectedCode(text)}
   />
-  {/* Collaboration Cursors */}
+{/* Collaboration Cursors */}
   {collaborationEnabled && collaborators.length > 0 && (
-    <CollaborationCursors 
-      collaborators={collaborators} 
-      editorRef={editorRef} 
-    />
+  <CollaborationCursors
+  collaborators={collaborators}
+  editorRef={editorRef}
+  />
   )}
-            </div>
-            {/* Live Preview Panel - Only for web projects */}
+  </div>
+  </div>
+  {/* Live Preview Panel - Only for web projects */}
             {(!project || project.template === 'web') && (
               <LivePreviewPanel
                 html={previewContent.html}
