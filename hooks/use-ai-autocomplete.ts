@@ -53,15 +53,18 @@ export function useAIAutocomplete({ language, enabled, debounceMs = 500 }: UseAI
       const lines = code.split('\n')
       const currentLine = lines[cursorLine - 1] || ''
       
-      // Skip if line is empty or just whitespace
-      if (currentLine.trim().length < 2) {
+      // Skip if line is empty or just whitespace (but allow comments)
+      const trimmedLine = currentLine.trim()
+      if (trimmedLine.length < 2) {
         setState(prev => ({ ...prev, suggestion: '', position: null }))
         return
       }
 
-      // Skip if we're in a comment or string (basic check)
-      const beforeCursor = currentLine.slice(0, cursorColumn - 1)
-      if (beforeCursor.includes('//') || beforeCursor.includes('#')) {
+      // Check if we're on a comment line - if so, we want to generate code based on it
+      const isCommentLine = trimmedLine.startsWith('//') || trimmedLine.startsWith('#') || trimmedLine.startsWith('/*') || trimmedLine.startsWith('*')
+      
+      // If comment line, only trigger at end of line to generate implementation
+      if (isCommentLine && cursorColumn < currentLine.length) {
         setState(prev => ({ ...prev, suggestion: '', position: null }))
         return
       }
@@ -89,9 +92,11 @@ export function useAIAutocomplete({ language, enabled, debounceMs = 500 }: UseAI
 
         const data = await response.json()
         
-        if (data.suggestion && data.suggestion.trim()) {
+        // API returns 'completion', we use 'suggestion' internally
+        const suggestion = data.suggestion || data.completion
+        if (suggestion && suggestion.trim()) {
           setState({
-            suggestion: data.suggestion,
+            suggestion: suggestion,
             isLoading: false,
             position: { lineNumber: cursorLine, column: cursorColumn },
           })

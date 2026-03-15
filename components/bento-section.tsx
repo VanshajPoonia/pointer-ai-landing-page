@@ -36,33 +36,33 @@ const BentoCard = ({ title, description, Component }) => (
 export function BentoSection() {
   const cards = [
     {
-      title: "AI-powered code reviews.",
-      description: "Get real-time, smart suggestions for cleaner code.",
+      title: "Project-Wide AI Assistant",
+      description: "Chat with AI that sees your entire codebase. Ask questions about any file.",
       Component: AiCodeReviews,
     },
     {
-      title: "Real-time coding previews",
-      description: "Chat, collaborate, and instantly preview changes together.",
+      title: "AI Copilot with Comments",
+      description: "Write a comment, get the code. Tab to accept intelligent suggestions.",
       Component: RealtimeCodingPreviews,
     },
     {
       title: "One-click integrations",
-      description: "Easily connect your workflow with popular dev tools.",
+      description: "Connect databases, APIs, and services instantly. Supabase, Neon, and more.",
       Component: OneClickIntegrationsIllustration,
     },
     {
-      title: "Flexible MCP connectivity",
-      description: "Effortlessly manage and configure MCP server access.",
-      Component: MCPConnectivityIllustration, // Updated component
+      title: "Multi-Tab Editor",
+      description: "Open multiple files in tabs. Close, reorder, and switch seamlessly.",
+      Component: MCPConnectivityIllustration,
     },
     {
-      title: "Launch parallel coding agents", // Swapped position
-      description: "Solve complex problems faster with multiple AI agents.",
-      Component: ParallelCodingAgents, // Updated component
+      title: "Launch parallel coding agents",
+      description: "Solve complex problems faster with multiple AI agents working together.",
+      Component: ParallelCodingAgents,
     },
     {
-      title: "Deployment made easy", // Swapped position
-      description: "Go from code to live deployment on Vercel instantly.",
+      title: "One-Click Deploy to Vercel",
+      description: "Go from code to production in seconds. Automatic CI/CD included.",
       Component: EasyDeployment,
     },
   ]

@@ -28,7 +28,13 @@ Rules:
 - Match the existing code style, indentation, and patterns
 - Be concise - suggest just enough to be helpful
 - If unsure, provide a minimal sensible completion
-- Consider the language: ${language}`
+- Consider the language: ${language}
+
+IMPORTANT - Comment-driven development:
+- If the line before cursor is a comment describing what to do (like "// add two numbers" or "# sort the array"), generate the actual code implementation
+- Comments are hints about what code the user wants - implement them
+- After a comment, generate working code that fulfills what the comment describes
+- Match the indentation of the comment when generating code`
 
     const userPrompt = `Complete this ${language} code. Output ONLY the completion text.
 

@@ -11,7 +11,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare, Columns, ListTree, History, Wand2 } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare, Columns, ListTree, History, Wand2, X, HelpCircle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,31 @@ import { AIRefactoringPanel } from './ai-refactoring-panel'
 import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
+// New feature imports
+import { BreadcrumbNavigation, BreadcrumbSymbol } from './breadcrumb-navigation'
+import { BookmarksPanel, useBookmarks, BookmarkItem } from './bookmarks-panel'
+import { LinterPanel, useLinter } from './linter-panel'
+import { ImportOrganizer } from './import-organizer'
+import { CodeCoverageViewer, generateMockReport, CoverageReport } from './code-coverage'
+import { TypeCheckerPanel, useTypeChecker } from './type-checker'
+import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon, GitMerge, Archive, GitPullRequest, MessageCircle, Code2, Maximize, Layout, PictureInPicture, Bug } from 'lucide-react'
+// Additional feature imports
+import { MergeConflictResolver } from './merge-conflict-resolver'
+import { StashManager, useStashManager } from './stash-manager'
+import { AIPRReview } from './ai-pr-review'
+import { CodebaseChat } from './codebase-chat'
+import { NaturalLanguageToCode } from './natural-language-to-code'
+import { DebuggerPanel, useDebugger } from './debugger-panel'
+import { ZenMode, useZenMode } from './zen-mode'
+import { CustomLayouts, useCustomLayouts, PanelConfig } from './custom-layouts'
+import { PiPPreview, usePiPPreview } from './pip-preview'
+// Project management imports
+import { EnvManager } from './env-manager'
+import { NPMScriptRunner, useNPMScripts } from './npm-script-runner'
+import { DependencyViewer } from './dependency-viewer'
+import { ProjectTemplates } from './project-templates'
+import { FeaturesHelpPanel } from './features-help-panel'
+import { FolderPlus, Terminal as TerminalIcon, FileJson, Key } from 'lucide-react'
 
 interface IDEInterfaceProps {
   projectId?: string
@@ -62,6 +87,7 @@ interface UserData {
 export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [fileSystem, setFileSystem] = useState<FileSystemState>(createDefaultFileSystem())
   const [activeFileId, setActiveFileId] = useState<string | null>(null)
+  const [openTabs, setOpenTabs] = useState<string[]>([])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
@@ -103,11 +129,80 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showFileHistory, setShowFileHistory] = useState(false)
   const [showRefactoringPanel, setShowRefactoringPanel] = useState(false)
   const [showDocumentOutline, setShowDocumentOutline] = useState(false)
+  // Additional new features state
+  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false)
+  const [showLinterPanel, setShowLinterPanel] = useState(false)
+  const [showImportOrganizer, setShowImportOrganizer] = useState(false)
+  const [showCoverageViewer, setShowCoverageViewer] = useState(false)
+  const [showTypeChecker, setShowTypeChecker] = useState(false)
+  const [coverageReport, setCoverageReport] = useState<CoverageReport | null>(null)
+  const [isRunningTests, setIsRunningTests] = useState(false)
+  const [cursorLine, setCursorLine] = useState(1)
+  // More new features state
+  const [showMergeResolver, setShowMergeResolver] = useState(false)
+  const [showStashManager, setShowStashManager] = useState(false)
+  const [showPRReview, setShowPRReview] = useState(false)
+  const [showCodebaseChat, setShowCodebaseChat] = useState(false)
+  const [showNLToCode, setShowNLToCode] = useState(false)
+  const [showDebugger, setShowDebugger] = useState(false)
+  const [showCustomLayouts, setShowCustomLayouts] = useState(false)
+  // Project management state
+  const [showEnvManager, setShowEnvManager] = useState(false)
+  const [showScriptRunner, setShowScriptRunner] = useState(false)
+  const [showDependencyViewer, setShowDependencyViewer] = useState(false)
+  const [showProjectTemplates, setShowProjectTemplates] = useState(false)
+  const [showFeaturesHelp, setShowFeaturesHelp] = useState(false)
+  const [envVariables, setEnvVariables] = useState<Array<{ key: string; value: string; isSecret: boolean }>>([
+    { key: 'DATABASE_URL', value: 'postgresql://...', isSecret: true },
+    { key: 'NEXT_PUBLIC_API_URL', value: 'https://api.example.com', isSecret: false }
+  ])
+  const [packageJson, setPackageJson] = useState<any>({
+    name: 'my-project',
+    version: '1.0.0',
+    scripts: {
+      dev: 'next dev',
+      build: 'next build',
+      start: 'next start',
+      lint: 'next lint'
+    },
+    dependencies: {
+      'next': '^15.0.0',
+      'react': '^18.3.0',
+      'react-dom': '^18.3.0'
+    },
+    devDependencies: {
+      'typescript': '^5.4.0',
+      '@types/react': '^18.3.0',
+      'tailwindcss': '^3.4.0'
+    }
+  })
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
   const supabase = createClient()
+
+  // New feature hooks
+  const bookmarks = useBookmarks()
+  const linter = useLinter(code, language)
+  const typeChecker = useTypeChecker(code, language)
+  const stashManager = useStashManager()
+  const debugger_ = useDebugger()
+  const zenMode = useZenMode()
+  const pipPreview = usePiPPreview()
+  const npmScripts = useNPMScripts(packageJson)
+  const layoutConfig = useCustomLayouts({
+    sidebar: true,
+    sidebarWidth: 250,
+    terminal: true,
+    terminalHeight: 200,
+    preview: true,
+    previewWidth: 400,
+    aiPanel: false,
+    aiPanelWidth: 350,
+    outputPanel: true,
+    debugPanel: false
+  })
 
   // Get current file's database ID for collaboration
   const activeFileDbId = activeFileId ? fileSystem.nodes[activeFileId]?.dbId : undefined
@@ -121,6 +216,22 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     'cmd+shift+a': () => setShowAIPanel(!showAIPanel),
     'cmd+,': () => setShowSettingsPanel(true),
     'cmd+k': () => setShowKeyboardShortcuts(true),
+    // New feature shortcuts
+    'cmd+shift+b': () => {
+      // Toggle bookmark at current line
+      if (activeFileId) {
+        const node = fileSystem.nodes[activeFileId]
+        if (node) {
+          const preview = code.split('\n')[cursorLine - 1]?.trim() || ''
+          bookmarks?.toggleBookmarkAtLine?.(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
+        }
+      }
+    },
+    'cmd+shift+o': () => setShowImportOrganizer(true),
+    'cmd+shift+z': () => zenMode?.toggleZenMode?.(),
+    'f5': () => debugger_?.isDebugging ? debugger_?.continueExecution?.() : debugger_?.startDebugging?.(),
+    'f10': () => debugger_?.stepOver?.(),
+    'f11': () => debugger_?.stepInto?.(),
   })
 
   // Track recent files
@@ -498,9 +609,34 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       setActiveFileId(nodeId)
       setCode(node.content || '')
       setLanguage(node.language || 'javascript')
+      // Add to open tabs if not already open
+      setOpenTabs(prev => prev.includes(nodeId) ? prev : [...prev, nodeId])
       // Update preview when selecting a file
       updatePreviewContent(node.content || '', node.language || 'javascript')
     }
+  }
+
+  const handleCloseTab = (nodeId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setOpenTabs(prev => {
+      const newTabs = prev.filter(id => id !== nodeId)
+      // If closing the active tab, switch to another tab
+      if (activeFileId === nodeId && newTabs.length > 0) {
+        const closedIndex = prev.indexOf(nodeId)
+        const newActiveIndex = Math.min(closedIndex, newTabs.length - 1)
+        const newActiveId = newTabs[newActiveIndex]
+        const newNode = fileSystem.nodes[newActiveId]
+        if (newNode) {
+          setActiveFileId(newActiveId)
+          setCode(newNode.content || '')
+          setLanguage(newNode.language || 'javascript')
+        }
+      } else if (newTabs.length === 0) {
+        setActiveFileId(null)
+        setCode('')
+      }
+      return newTabs
+    })
   }
 
   const handleCreateFile = (parentId: string, startRenaming?: (id: string) => void) => {
@@ -867,25 +1003,48 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         <div className="flex flex-1 flex-col min-w-0">
           {/* Tab bar with actions */}
           <div className="flex items-center justify-between h-[35px] bg-[#252526] border-b border-[#191919] px-2">
-            <div className="flex items-center h-full">
-              {activeFileId && fileSystem.nodes[activeFileId] ? (
-                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
-                  <FileCode className="h-4 w-4 text-[#519aba]" />
-                  <span>{fileSystem.nodes[activeFileId].name}</span>
-                </div>
+            <div className="flex items-center h-full overflow-x-auto max-w-[300px] scrollbar-thin">
+              {openTabs.length > 0 ? (
+                openTabs.map(tabId => {
+                  const node = fileSystem.nodes[tabId]
+                  if (!node) return null
+                  const isActive = tabId === activeFileId
+                  return (
+                    <div
+                      key={tabId}
+                      onClick={() => handleSelectFile(tabId)}
+                      className={`group flex items-center gap-1.5 px-3 h-full text-[13px] cursor-pointer border-r border-[#191919] transition-all duration-150 ${
+                        isActive
+                          ? 'bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#007acc]'
+                          : 'bg-[#2d2d2d] text-[#969696] hover:bg-[#2a2a2a] border-t-2 border-t-transparent'
+                      }`}
+                    >
+                      <FileCode className={`h-3.5 w-3.5 ${isActive ? 'text-[#519aba]' : 'text-[#6e6e6e]'}`} />
+                      <span className="whitespace-nowrap">{node.name}</span>
+                      <button
+                        onClick={(e) => handleCloseTab(tabId, e)}
+                        className={`ml-1 p-0.5 rounded hover:bg-[#3c3c3c] transition-all duration-150 ${
+                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )
+                })
               ) : (
-                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
-                  <FileCode className="h-4 w-4 text-[#519aba]" />
-                  <span>No file selected</span>
+                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#808080] border-t-2 border-t-transparent">
+                  <FileCode className="h-4 w-4 text-[#6e6e6e]" />
+                  <span>No file open</span>
                 </div>
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto toolbar-scroll flex-1 min-w-0 pr-2">
               <select
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value)}
-                className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer"
+                className="h-[26px] rounded-[3px] bg-[#3c3c3c] border border-[#3c3c3c] px-2 text-[12px] text-[#cccccc] focus:border-[#007acc] focus:outline-none cursor-pointer shrink-0 transition-all duration-150"
               >
                 <optgroup label="Popular">
                   <option value="javascript">JavaScript</option>
@@ -1134,7 +1293,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setAiAutocompleteEnabled(!aiAutocompleteEnabled)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       aiAutocompleteEnabled
         ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400'
         : 'text-[#666666] hover:bg-[#3c3c3c]'
@@ -1152,7 +1311,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowAIToolsPanel(!showAIToolsPanel)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       showAIToolsPanel
         ? 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1167,7 +1326,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowAIPanel(!showAIPanel)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       showAIPanel
         ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1181,7 +1340,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowQuickOpen(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Quick Open (Cmd+P)"
   >
     <Search className="mr-1.5 h-4 w-4" />
@@ -1192,7 +1351,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowCommandPalette(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Command Palette (Cmd+Shift+P)"
   >
     <Command className="mr-1.5 h-4 w-4" />
@@ -1202,7 +1361,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowSettingsPanel(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Settings (Cmd+,)"
   >
     <Settings className="h-4 w-4" />
@@ -1219,7 +1378,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     }}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Compare Changes"
   >
   <GitCompare className="h-4 w-4" />
@@ -1229,7 +1388,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowGitBlame(true)}
     size="sm"
     variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
     title="Git Blame"
   >
     <History className="h-4 w-4" />
@@ -1239,7 +1398,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     onClick={() => setShowDocumentOutline(!showDocumentOutline)}
     size="sm"
     variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
       showDocumentOutline
         ? 'bg-blue-500/20 text-blue-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1248,18 +1407,231 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   >
     <ListTree className="h-4 w-4" />
   </Button>
-  {/* AI Refactoring Button */}
+{/* AI Refactoring Button */}
   <Button
-    onClick={() => setShowRefactoringPanel(true)}
+  onClick={() => setShowRefactoringPanel(true)}
+  size="sm"
+  variant="ghost"
+  className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
+  title="AI Refactoring"
+  >
+  <Wand2 className="h-4 w-4" />
+  </Button>
+  {/* Bookmarks Button */}
+  <Button
+    onClick={() => setShowBookmarksPanel(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
+      (bookmarks?.bookmarks || []).length > 0
+        ? 'text-blue-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Bookmarks (Cmd+Shift+B to toggle)"
+  >
+    <Bookmark className="h-4 w-4" />
+    {(bookmarks?.bookmarks || []).length > 0 && (
+      <span className="ml-1 text-[10px]">{(bookmarks?.bookmarks || []).length}</span>
+    )}
+  </Button>
+  {/* Linter Panel Button */}
+  <Button
+    onClick={() => setShowLinterPanel(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
+      (linter.issues || []).filter(i => i.severity === 'error').length > 0
+        ? 'text-red-400'
+        : (linter.issues || []).filter(i => i.severity === 'warning').length > 0
+        ? 'text-yellow-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="ESLint/Prettier"
+  >
+    <AlertCircle className="h-4 w-4" />
+    {(linter.issues || []).length > 0 && (
+      <span className="ml-1 text-[10px]">{(linter.issues || []).length}</span>
+    )}
+  </Button>
+  {/* Import Organizer Button */}
+  <Button
+    onClick={() => setShowImportOrganizer(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
+    title="Organize Imports (Cmd+Shift+O)"
+  >
+    <Package className="h-4 w-4" />
+  </Button>
+  {/* Code Coverage Button */}
+  <Button
+    onClick={() => setShowCoverageViewer(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
+      coverageReport
+        ? 'text-green-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Code Coverage"
+  >
+    <BarChart3 className="h-4 w-4" />
+  </Button>
+{/* Type Checker Button */}
+  <Button
+  onClick={() => setShowTypeChecker(true)}
+  size="sm"
+  variant="ghost"
+  className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
+  (typeChecker.errors || []).filter(e => e.severity === 'error').length > 0
+  ? 'text-red-400'
+  : (typeChecker.errors || []).length > 0
+  ? 'text-yellow-400'
+  : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+  }`}
+  title="TypeScript Type Checker"
+  >
+  <TypeErrorIcon className="h-4 w-4" />
+  {(typeChecker.errors || []).length > 0 && (
+    <span className="ml-1 text-[10px]">{(typeChecker.errors || []).length}</span>
+  )}
+  </Button>
+  {/* Debugger Button */}
+  <Button
+    onClick={() => setShowDebugger(!showDebugger)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
+      debugger_?.isDebugging
+        ? debugger_?.isPaused
+          ? 'text-yellow-400 bg-yellow-500/10'
+          : 'text-green-400 bg-green-500/10'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Debugger"
+  >
+    <Bug className="h-4 w-4" />
+  </Button>
+  {/* AI PR Review Button */}
+  <Button
+    onClick={() => setShowPRReview(true)}
     size="sm"
     variant="ghost"
     className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
-    title="AI Refactoring"
+    title="AI Code Review"
   >
-    <Wand2 className="h-4 w-4" />
+    <GitPullRequest className="h-4 w-4" />
+  </Button>
+  {/* Codebase Chat Button */}
+  <Button
+    onClick={() => setShowCodebaseChat(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Codebase Chat"
+  >
+    <MessageCircle className="h-4 w-4" />
+  </Button>
+  {/* NL to Code Button */}
+  <Button
+    onClick={() => setShowNLToCode(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Natural Language to Code"
+  >
+    <Code2 className="h-4 w-4" />
+  </Button>
+  <div className="w-px h-4 bg-[#3c3c3c] mx-1" />
+  {/* Zen Mode Button */}
+  <Button
+    onClick={() => zenMode?.toggleZenMode?.()}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Zen Mode (Cmd+Shift+Z)"
+  >
+    <Maximize className="h-4 w-4" />
+  </Button>
+  {/* Custom Layouts Button */}
+  <Button
+    onClick={() => setShowCustomLayouts(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Workspace Layouts"
+  >
+    <Layout className="h-4 w-4" />
+  </Button>
+{/* PiP Preview Button */}
+  <Button
+onClick={() => pipPreview?.openPiP?.('/api/preview')}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      pipPreview?.isOpen ? 'text-blue-400 bg-blue-500/10' : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+  }`}
+  title="Picture-in-Picture Preview"
+  >
+  <PictureInPicture className="h-4 w-4" />
+  </Button>
+  {/* Help/Features Button */}
+  <Button
+    onClick={() => setShowFeaturesHelp(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-amber-500 hover:bg-amber-500/10 transition-all duration-150"
+    title="Features & Help"
+  >
+    <HelpCircle className="h-4 w-4" />
+  </Button>
+  <div className="w-px h-4 bg-[#3c3c3c] mx-1" />
+  {/* Project Management Buttons */}
+  <Button
+    onClick={() => setShowProjectTemplates(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="New Project from Template"
+  >
+    <FolderPlus className="h-4 w-4" />
   </Button>
   <Button
-    onClick={saveFile}
+    onClick={() => setShowEnvManager(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Environment Variables"
+  >
+    <Key className="h-4 w-4" />
+  </Button>
+  <Button
+    onClick={() => setShowScriptRunner(true)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      (npmScripts?.runningScripts?.size || 0) > 0 
+        ? 'text-green-400 bg-green-500/10' 
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="NPM Scripts"
+  >
+    <TerminalIcon className="h-4 w-4" />
+    {(npmScripts?.runningScripts?.size || 0) > 0 && (
+      <span className="ml-1 text-[10px]">{npmScripts?.runningScripts?.size || 0}</span>
+    )}
+  </Button>
+  <Button
+    onClick={() => setShowDependencyViewer(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Dependency Manager"
+  >
+    <FileJson className="h-4 w-4" />
+  </Button>
+  <Button
+  onClick={saveFile}
                 size="sm"
                 variant="ghost"
                 className="h-[26px] px-3 text-[#cccccc] hover:bg-[#3c3c3c] text-[12px] rounded-[3px]"
@@ -1279,10 +1651,26 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
             </div>
           </div>
 
-          {/* Editor Area */}
-          <div className="flex-1 min-h-0 flex overflow-hidden">
-            <div className="flex-1 min-w-0 overflow-hidden">
- <CodeEditor
+{/* Editor Area */}
+  <div className="flex-1 min-h-0 flex overflow-hidden">
+  <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+  {/* Breadcrumb Navigation */}
+  {activeFileId && (
+    <BreadcrumbNavigation
+      filePath={getNodePath(fileSystem, activeFileId)}
+      code={code}
+      cursorLine={cursorLine}
+      onNavigate={(symbol) => {
+        if (symbol.line && editorRef.current) {
+          editorRef.current.revealLineInCenter(symbol.line)
+          editorRef.current.setPosition({ lineNumber: symbol.line, column: 1 })
+          editorRef.current.focus()
+        }
+      }}
+    />
+  )}
+  <div className="flex-1 min-h-0">
+  <CodeEditor
   value={code}
   language={language}
   onChange={(newCode) => {
@@ -1307,15 +1695,17 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       initCollabContent(code)
     }
   }}
-  onCursorChange={(position, selection) => {
-    // Update cursor position for collaborators
-    if (collaborationEnabled && projectId && activeFileDbId) {
-      updateCollabCursor(position, selection)
-    }
-    // Dismiss suggestion on cursor move
-    if (aiSuggestion) {
-      dismissSuggestion()
-    }
+onCursorChange={(position, selection) => {
+  // Track cursor line for breadcrumb navigation
+  setCursorLine(position.lineNumber)
+  // Update cursor position for collaborators
+  if (collaborationEnabled && projectId && activeFileDbId) {
+  updateCollabCursor(position, selection)
+  }
+  // Dismiss suggestion on cursor move
+  if (aiSuggestion) {
+  dismissSuggestion()
+  }
   }}
   ghostText={aiSuggestion ? {
     text: aiSuggestion,
@@ -1328,15 +1718,16 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   onDismissGhostText={dismissSuggestion}
   onSelectionChange={(text) => setSelectedCode(text)}
   />
-  {/* Collaboration Cursors */}
+{/* Collaboration Cursors */}
   {collaborationEnabled && collaborators.length > 0 && (
-    <CollaborationCursors 
-      collaborators={collaborators} 
-      editorRef={editorRef} 
-    />
+  <CollaborationCursors
+  collaborators={collaborators}
+  editorRef={editorRef}
+  />
   )}
-            </div>
-            {/* Live Preview Panel - Only for web projects */}
+  </div>
+  </div>
+  {/* Live Preview Panel - Only for web projects */}
             {(!project || project.template === 'web') && (
               <LivePreviewPanel
                 html={previewContent.html}
@@ -1363,6 +1754,16 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                   analyzeCode(newCode, language)
                 }, 1000)
               }}
+              projectFiles={Object.values(fileSystem.nodes)
+                .filter(n => n.type === 'file' && n.content)
+                .map(n => ({
+                  id: n.id,
+                  name: n.name,
+                  path: getNodePath(fileSystem, n.id),
+                  content: n.content || '',
+                  language: n.language || 'text'
+                }))}
+              currentFilePath={activeFileId ? getNodePath(fileSystem, activeFileId) : undefined}
             />
             {/* Snippets Panel */}
             <SnippetsPanel
@@ -1492,42 +1893,38 @@ ignoredIssues={ignoredIssues}
               codeNavigation.findAllReferences(selectedCode.trim())
             }
           }},
+          // New feature commands
+          { id: 'toggle-bookmark', name: 'Toggle Bookmark', shortcut: ['Cmd', 'Shift', 'B'], icon: <Bookmark className="h-4 w-4" />, category: 'navigation', action: () => {
+            if (activeFileId) {
+              const node = fileSystem.nodes[activeFileId]
+              if (node) {
+                const preview = code.split('\n')[cursorLine - 1]?.trim() || ''
+                bookmarks?.toggleBookmarkAtLine?.(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
+              }
+            }
+          }},
+          { id: 'show-bookmarks', name: 'Show Bookmarks', icon: <Bookmark className="h-4 w-4" />, category: 'navigation', action: () => setShowBookmarksPanel(true) },
+          { id: 'organize-imports', name: 'Organize Imports', shortcut: ['Cmd', 'Shift', 'O'], icon: <Package className="h-4 w-4" />, category: 'code', action: () => setShowImportOrganizer(true) },
+          { id: 'show-linter', name: 'Show Linter Panel', icon: <AlertCircle className="h-4 w-4" />, category: 'code', action: () => setShowLinterPanel(true) },
+          { id: 'show-coverage', name: 'Show Code Coverage', icon: <BarChart3 className="h-4 w-4" />, category: 'code', action: () => setShowCoverageViewer(true) },
+          { id: 'show-type-checker', name: 'Show Type Checker', icon: <TypeErrorIcon className="h-4 w-4" />, category: 'code', action: () => setShowTypeChecker(true) },
+          { id: 'run-tests', name: 'Run Tests with Coverage', icon: <BarChart3 className="h-4 w-4" />, category: 'code', action: () => {
+            setIsRunningTests(true)
+            setTimeout(() => {
+              const files = Object.values(fileSystem.nodes)
+                .filter(n => n.type === 'file')
+                .map(n => ({
+                  id: n.id,
+                  name: n.name,
+                  path: getNodePath(fileSystem, n.id),
+                  content: n.content
+                }))
+              setCoverageReport(generateMockReport(files))
+              setIsRunningTests(false)
+              setShowCoverageViewer(true)
+            }, 2000)
+          }},
         ]}
-      />
-
-      {/* Keyboard Shortcuts Panel */}
-      <KeyboardShortcutsPanel
-        isOpen={showKeyboardShortcuts}
-        onClose={() => setShowKeyboardShortcuts(false)}
-        shortcuts={defaultShortcuts}
-      />
-
-      {/* Settings Panel */}
-      <SettingsPanel
-        isOpen={showSettingsPanel}
-        onClose={() => setShowSettingsPanel(false)}
-        settings={editorSettings}
-        onSettingsChange={setEditorSettings}
-      />
-
-      {/* Quick Open (File Search) */}
-      <QuickOpen
-        isOpen={showQuickOpen}
-        onClose={() => setShowQuickOpen(false)}
-        files={Object.values(fileSystem.nodes).map(node => ({
-          id: node.id,
-          name: node.name,
-          type: node.type,
-          path: getNodePath(fileSystem, node.id),
-          content: node.content
-        }))}
-        onFileSelect={(fileId) => {
-          setActiveFileId(fileId)
-          const node = fileSystem.nodes[fileId]
-          if (node && node.type === 'file') {
-            setCode(node.content || '')
-          }
-        }}
         recentFiles={recentFiles}
       />
 
@@ -1640,13 +2037,436 @@ ignoredIssues={ignoredIssues}
             symbols={parseSymbols(code, activeFileId || 'main', activeFileId ? getNodePath(fileSystem, activeFileId) : 'main.ts')}
             onSelect={(symbol) => {
               // Jump to symbol line in editor
-              console.log('[v0] Jump to symbol:', symbol.name, 'at line', symbol.line)
+              if (editorRef.current && symbol.line) {
+                editorRef.current.revealLineInCenter(symbol.line)
+                editorRef.current.setPosition({ lineNumber: symbol.line, column: 1 })
+                editorRef.current.focus()
+              }
             }}
             isOpen={showDocumentOutline}
             onClose={() => setShowDocumentOutline(false)}
           />
         </div>
       )}
+
+      {/* Bookmarks Panel */}
+      <BookmarksPanel
+        isOpen={showBookmarksPanel}
+        onClose={() => setShowBookmarksPanel(false)}
+        bookmarks={bookmarks?.bookmarks || []}
+        groups={bookmarks?.groups || []}
+        onAddBookmark={(bookmark) => bookmarks?.addBookmark?.(bookmark)}
+        onRemoveBookmark={(id) => bookmarks?.removeBookmark?.(id)}
+        onUpdateBookmark={(id, updates) => bookmarks?.updateBookmark?.(id, updates)}
+        onNavigateToBookmark={(bookmark) => {
+          setActiveFileId(bookmark.fileId)
+          const node = fileSystem.nodes[bookmark.fileId]
+          if (node?.content) {
+            setCode(node.content)
+            setTimeout(() => {
+              if (editorRef.current) {
+                editorRef.current.revealLineInCenter(bookmark.line)
+                editorRef.current.setPosition({ lineNumber: bookmark.line, column: 1 })
+                editorRef.current.focus()
+              }
+            }, 100)
+          }
+          setShowBookmarksPanel(false)
+        }}
+        onCreateGroup={(name) => bookmarks?.createGroup?.(name)}
+        onDeleteGroup={(id) => bookmarks?.deleteGroup?.(id)}
+        onMoveToGroup={(bookmarkId, groupId) => bookmarks?.moveToGroup?.(bookmarkId, groupId)}
+        onToggleGroup={(groupId) => bookmarks?.toggleGroup?.(groupId)}
+        currentFileId={activeFileId || undefined}
+        currentLine={cursorLine}
+      />
+
+      {/* Linter Panel */}
+      <LinterPanel
+        isOpen={showLinterPanel}
+        onClose={() => setShowLinterPanel(false)}
+        issues={linter?.issues || []}
+        isAnalyzing={linter?.isAnalyzing || false}
+        config={linter?.config || { eslintEnabled: true, prettierEnabled: true, autoFixOnSave: true, showErrors: true, showWarnings: true, showInfo: true, showHints: true }}
+        onConfigChange={linter?.updateConfig || (() => {})}
+        onFixIssue={(issue) => {
+          if (issue.fix) {
+            setCode(issue.fix)
+            handleCodeChange(issue.fix)
+          }
+        }}
+        onFixAll={() => {
+          const fixedCode = linter?.fixAllAuto?.()
+          if (fixedCode) {
+            setCode(fixedCode)
+            handleCodeChange(fixedCode)
+          }
+        }}
+        onNavigateToIssue={(issue) => {
+          if (editorRef.current) {
+            editorRef.current.revealLineInCenter(issue.line)
+            editorRef.current.setPosition({ lineNumber: issue.line, column: issue.column || 1 })
+            editorRef.current.focus()
+          }
+          setShowLinterPanel(false)
+        }}
+      />
+
+      {/* Import Organizer */}
+      <ImportOrganizer
+        isOpen={showImportOrganizer}
+        onClose={() => setShowImportOrganizer(false)}
+        code={code}
+        language={language}
+        onApply={(organizedCode) => {
+          setCode(organizedCode)
+          handleCodeChange(organizedCode)
+          setShowImportOrganizer(false)
+        }}
+      />
+
+      {/* Code Coverage Viewer */}
+      <CodeCoverageViewer
+        isOpen={showCoverageViewer}
+        onClose={() => setShowCoverageViewer(false)}
+        report={coverageReport}
+        isRunning={isRunningTests}
+        onRunTests={() => {
+          setIsRunningTests(true)
+          // Simulate running tests and generating coverage
+          setTimeout(() => {
+            const files = Object.values(fileSystem.nodes)
+              .filter(n => n.type === 'file')
+              .map(n => ({
+                id: n.id,
+                name: n.name,
+                path: getNodePath(fileSystem, n.id),
+                content: n.content
+              }))
+            setCoverageReport(generateMockReport(files))
+            setIsRunningTests(false)
+          }, 2000)
+        }}
+        onNavigateToFile={(fileId, line) => {
+          setActiveFileId(fileId)
+          const node = fileSystem.nodes[fileId]
+          if (node?.content) {
+            setCode(node.content)
+            setTimeout(() => {
+              if (editorRef.current && line) {
+                editorRef.current.revealLineInCenter(line)
+                editorRef.current.setPosition({ lineNumber: line, column: 1 })
+                editorRef.current.focus()
+              }
+            }, 100)
+          }
+        }}
+      />
+
+      {/* Type Checker Panel */}
+      <TypeCheckerPanel
+        isOpen={showTypeChecker}
+        onClose={() => setShowTypeChecker(false)}
+        errors={typeChecker?.errors || []}
+        isChecking={typeChecker?.isChecking || false}
+        config={typeChecker?.config || { strict: true, noImplicitAny: true, strictNullChecks: true, noUnusedLocals: true, noUnusedParameters: true }}
+        onConfigChange={typeChecker?.updateConfig || (() => {})}
+        onNavigateToError={(error) => {
+          if (editorRef.current) {
+            editorRef.current.revealLineInCenter(error.line)
+            editorRef.current.setPosition({ lineNumber: error.line, column: error.column || 1 })
+            editorRef.current.focus()
+          }
+          setShowTypeChecker(false)
+        }}
+        onApplyFix={(error) => {
+          if (error.fix) {
+            setCode(error.fix)
+            handleCodeChange(error.fix)
+          }
+        }}
+      />
+
+      {/* Merge Conflict Resolver */}
+      <MergeConflictResolver
+        isOpen={showMergeResolver}
+        onClose={() => setShowMergeResolver(false)}
+        fileName={activeFileId ? fileSystem.nodes[activeFileId]?.name || 'file' : 'file'}
+        currentCode={code}
+        incomingCode={savedVersions[activeFileId || ''] || code}
+        baseCode={code}
+        onResolve={(resolvedCode) => {
+          setCode(resolvedCode)
+          handleCodeChange(resolvedCode)
+          setShowMergeResolver(false)
+        }}
+      />
+
+      {/* Stash Manager */}
+      <StashManager
+        isOpen={showStashManager}
+        onClose={() => setShowStashManager(false)}
+        stashes={stashManager?.stashes || []}
+        currentBranch="main"
+        onCreateStash={(message) => {
+          stashManager?.createStash?.(message)
+        }}
+        onApplyStash={(id, drop) => {
+          stashManager?.applyStash?.(id, drop)
+        }}
+        onDropStash={stashManager?.dropStash || (() => {})}
+        onClearAll={() => stashManager?.clearAll?.()}
+      />
+
+      {/* AI PR Review */}
+      <AIPRReview
+        isOpen={showPRReview}
+        onClose={() => setShowPRReview(false)}
+        code={code}
+        originalCode={savedVersions[activeFileId || '']}
+        fileName={activeFileId ? fileSystem.nodes[activeFileId]?.name || 'file' : 'file'}
+        language={language}
+        onApplySuggestion={(suggestion) => {
+          setCode(suggestion)
+          handleCodeChange(suggestion)
+        }}
+      />
+
+      {/* Codebase Chat */}
+      <CodebaseChat
+        isOpen={showCodebaseChat}
+        onClose={() => setShowCodebaseChat(false)}
+        files={Object.values(fileSystem.nodes).filter(n => n.type === 'file').map(n => ({
+          id: n.id,
+          name: n.name,
+          path: getNodePath(fileSystem, n.id),
+          content: n.content
+        }))}
+        currentFile={activeFileId ? {
+          id: activeFileId,
+          name: fileSystem.nodes[activeFileId]?.name || 'file',
+          path: getNodePath(fileSystem, activeFileId),
+          content: code
+        } : undefined}
+        onNavigateToFile={(fileId) => {
+          setActiveFileId(fileId)
+          const node = fileSystem.nodes[fileId]
+          if (node?.content) setCode(node.content)
+        }}
+        onInsertCode={(insertCode) => {
+          if (editorRef.current) {
+            const position = editorRef.current.getPosition()
+            editorRef.current.executeEdits('codebase-chat', [{
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+              },
+              text: insertCode
+            }])
+          }
+        }}
+      />
+
+      {/* Natural Language to Code */}
+      <NaturalLanguageToCode
+        isOpen={showNLToCode}
+        onClose={() => setShowNLToCode(false)}
+        language={language}
+        currentCode={selectedCode || code}
+        onInsertCode={(insertCode) => {
+          if (editorRef.current) {
+            const position = editorRef.current.getPosition()
+            editorRef.current.executeEdits('nl-to-code', [{
+              range: {
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+              },
+              text: '\n' + insertCode + '\n'
+            }])
+          }
+          setShowNLToCode(false)
+        }}
+        onReplaceCode={(newCode) => {
+          setCode(newCode)
+          handleCodeChange(newCode)
+        }}
+      />
+
+      {/* Custom Layouts */}
+      <CustomLayouts
+        isOpen={showCustomLayouts}
+        onClose={() => setShowCustomLayouts(false)}
+        currentConfig={layoutConfig?.config || { sidebar: true, sidebarWidth: 250, terminal: true, terminalHeight: 200, preview: true, previewWidth: 400, aiPanel: false, aiPanelWidth: 350, outputPanel: true, debugPanel: false }}
+        onApplyLayout={layoutConfig?.applyLayout || (() => {})}
+        onSaveLayout={(name, config) => {
+          console.log('[v0] Saved layout:', name, config)
+        }}
+      />
+
+      {/* PiP Preview */}
+      <PiPPreview
+        isOpen={pipPreview?.isOpen || false}
+        onClose={pipPreview?.closePiP || (() => {})}
+        previewUrl={pipPreview?.previewUrl || '/api/preview'}
+        onRefresh={() => {
+          // Trigger preview refresh
+        }}
+      />
+
+      {/* Zen Mode */}
+      <ZenMode isActive={zenMode?.isZenMode || false} onExit={zenMode?.exitZenMode || (() => {})}>
+        <CodeEditor
+          code={code}
+          onChange={handleCodeChange}
+          language={language}
+          issues={codeIssues}
+          onEditorReady={(editor) => { editorRef.current = editor }}
+        />
+      </ZenMode>
+
+      {/* Debugger Panel - Fixed position */}
+      {showDebugger && (
+        <div className="fixed right-0 top-[50px] bottom-0 w-80 z-40 shadow-xl">
+          <DebuggerPanel
+            breakpoints={debugger_?.breakpoints || []}
+            onAddBreakpoint={debugger_?.addBreakpoint || (() => {})}
+            onRemoveBreakpoint={debugger_?.removeBreakpoint || (() => {})}
+            onToggleBreakpoint={debugger_?.toggleBreakpoint || (() => {})}
+            onClearBreakpoints={debugger_?.clearBreakpoints || (() => {})}
+            onNavigateToBreakpoint={(bp) => {
+              setActiveFileId(bp.fileId)
+              const node = fileSystem.nodes[bp.fileId]
+              if (node?.content) {
+                setCode(node.content)
+                setTimeout(() => {
+                  if (editorRef.current) {
+                    editorRef.current.revealLineInCenter(bp.line)
+                    editorRef.current.setPosition({ lineNumber: bp.line, column: 1 })
+                  }
+                }, 100)
+              }
+            }}
+            isDebugging={debugger_?.isDebugging || false}
+            isPaused={debugger_?.isPaused || false}
+            onStartDebugging={debugger_?.startDebugging || (() => {})}
+            onStopDebugging={debugger_?.stopDebugging || (() => {})}
+            onContinue={debugger_?.continueExecution || (() => {})}
+            onStepOver={debugger_?.stepOver || (() => {})}
+            onStepInto={debugger_?.stepInto || (() => {})}
+            onStepOut={debugger_?.stepOut || (() => {})}
+            callStack={debugger_?.callStack || []}
+            variables={debugger_?.variables || []}
+            onStackFrameSelect={debugger_?.setCurrentFrame || (() => {})}
+            currentFrame={debugger_?.currentFrame}
+          />
+        </div>
+      )}
+
+      {/* Features & Help Panel */}
+      <FeaturesHelpPanel
+        isOpen={showFeaturesHelp}
+        onClose={() => setShowFeaturesHelp(false)}
+      />
+
+      {/* Environment Variables Manager */}
+      <EnvManager
+        isOpen={showEnvManager}
+        onClose={() => setShowEnvManager(false)}
+      />
+
+      {/* NPM Script Runner */}
+      <NPMScriptRunner
+        isOpen={showScriptRunner}
+        onClose={() => setShowScriptRunner(false)}
+        scripts={npmScripts?.scripts || []}
+        runningScripts={npmScripts?.runningScripts || new Set()}
+        scriptOutputs={npmScripts?.scriptOutputs || {}}
+        onRunScript={(name) => npmScripts?.runScript?.(name, (output) => {
+          // Script completed
+          console.log('[v0] Script completed:', name, output)
+        })}
+        onStopScript={npmScripts?.stopScript || (() => {})}
+        onAddScript={(name, command) => {
+          setPackageJson({
+            ...packageJson,
+            scripts: { ...packageJson.scripts, [name]: command }
+          })
+        }}
+        onRemoveScript={(name) => {
+          const { [name]: _, ...rest } = packageJson.scripts
+          setPackageJson({ ...packageJson, scripts: rest })
+        }}
+      />
+
+      {/* Dependency Viewer */}
+      <DependencyViewer
+        isOpen={showDependencyViewer}
+        onClose={() => setShowDependencyViewer(false)}
+        packageJson={packageJson}
+        onUpdateDependency={(name, version) => {
+          const isDev = packageJson.devDependencies?.[name]
+          if (isDev) {
+            setPackageJson({
+              ...packageJson,
+              devDependencies: { ...packageJson.devDependencies, [name]: version }
+            })
+          } else {
+            setPackageJson({
+              ...packageJson,
+              dependencies: { ...packageJson.dependencies, [name]: version }
+            })
+          }
+        }}
+        onRemoveDependency={(name, type) => {
+          if (type === 'devDependency') {
+            const { [name]: _, ...rest } = packageJson.devDependencies
+            setPackageJson({ ...packageJson, devDependencies: rest })
+          } else {
+            const { [name]: _, ...rest } = packageJson.dependencies
+            setPackageJson({ ...packageJson, dependencies: rest })
+          }
+        }}
+        onAddDependency={(name, version, type) => {
+          if (type === 'devDependency') {
+            setPackageJson({
+              ...packageJson,
+              devDependencies: { ...packageJson.devDependencies, [name]: version }
+            })
+          } else {
+            setPackageJson({
+              ...packageJson,
+              dependencies: { ...packageJson.dependencies, [name]: version }
+            })
+          }
+        }}
+      />
+
+      {/* Project Templates */}
+      <ProjectTemplates
+        isOpen={showProjectTemplates}
+        onClose={() => setShowProjectTemplates(false)}
+        onSelectTemplate={(template, projectName) => {
+          // Create new project from template
+          console.log('[v0] Creating project:', projectName, 'from template:', template.name)
+          // Add template files to file system
+          template.files.forEach(file => {
+            console.log('[v0] Would create file:', file.path)
+          })
+          // Update package.json
+          if (template.dependencies || template.devDependencies) {
+            setPackageJson({
+              ...packageJson,
+              name: projectName,
+              dependencies: { ...packageJson.dependencies, ...template.dependencies },
+              devDependencies: { ...packageJson.devDependencies, ...template.devDependencies }
+            })
+          }
+        }}
+      />
     </div>
   )
 }

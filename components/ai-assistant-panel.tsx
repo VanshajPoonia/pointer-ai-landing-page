@@ -6,26 +6,40 @@ import { DefaultChatTransport } from 'ai'
 import { Bot, Send, X, Sparkles, Loader2, Trash2, Copy, Check, Play } from 'lucide-react'
 import { Button } from './ui/button'
 
+interface ProjectFile {
+  id: string
+  name: string
+  path: string
+  content: string
+  language: string
+}
+
 interface AIAssistantPanelProps {
   code: string
   language: string
   isOpen: boolean
   onClose: () => void
   onCodeChange?: (newCode: string) => void
+  projectFiles?: ProjectFile[]
+  currentFilePath?: string
 }
 
-export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange }: AIAssistantPanelProps) {
+export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange, projectFiles = [], currentFilePath }: AIAssistantPanelProps) {
   const [input, setInput] = useState('')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const codeRef = useRef(code)
   const languageRef = useRef(language)
+  const projectFilesRef = useRef(projectFiles)
+  const currentFilePathRef = useRef(currentFilePath)
   
   // Keep refs updated with latest values
   useEffect(() => {
     codeRef.current = code
     languageRef.current = language
-  }, [code, language])
+    projectFilesRef.current = projectFiles
+    currentFilePathRef.current = currentFilePath
+  }, [code, language, projectFiles, currentFilePath])
   
   // Memoize the transport to prevent re-creation on every render
   const transport = useMemo(() => new DefaultChatTransport({ 
@@ -36,6 +50,8 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
         id,
         code: codeRef.current,
         language: languageRef.current,
+        projectFiles: projectFilesRef.current,
+        currentFilePath: currentFilePathRef.current,
       },
     }),
   }), [])
@@ -76,7 +92,7 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
   if (!isOpen) return null
 
   return (
-    <div className="w-[400px] h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0">
+    <div className="w-full max-w-[400px] min-w-[280px] h-full bg-[#252526] border-l border-[#191919] flex flex-col shrink-0 overflow-hidden">
       {/* Header */}
         <div className="flex items-center justify-between h-[35px] px-4 bg-[#252526] border-b border-[#191919] shrink-0">
           <div className="flex items-center gap-2">
@@ -105,10 +121,10 @@ export function AIAssistantPanel({ code, language, isOpen, onClose, onCodeChange
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center text-center px-2 py-6">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-4 shrink-0">
                 <Bot className="h-6 w-6 text-amber-500" />
               </div>
               <h3 className="text-[#cccccc] font-medium mb-2">Volt AI Assistant</h3>
