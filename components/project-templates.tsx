@@ -17,7 +17,6 @@ import {
   Layers,
   Server,
   Globe,
-  Smartphone,
   Database,
   Zap
 } from 'lucide-react'
@@ -26,7 +25,7 @@ interface ProjectTemplate {
   id: string
   name: string
   description: string
-  category: 'frontend' | 'backend' | 'fullstack' | 'api' | 'mobile'
+  category: 'frontend' | 'backend' | 'fullstack' | 'api'
   framework: string
   icon: React.ReactNode
   tags: string[]
@@ -327,65 +326,13 @@ export default async function Home() {
       }
     ]
   },
-  {
-    id: 'react-native',
-    name: 'React Native',
-    description: 'Cross-platform mobile app with React Native and Expo',
-    category: 'mobile',
-    framework: 'Expo',
-    icon: <Smartphone className="h-6 w-6" />,
-    tags: ['React Native', 'Expo', 'iOS', 'Android'],
-    stars: 5400,
-    downloads: 150000,
-    dependencies: {
-      'expo': '^50.0.0',
-      'react': '^18.3.0',
-      'react-native': '^0.73.0'
-    },
-    devDependencies: {
-      '@types/react': '^18.3.0',
-      'typescript': '^5.4.0'
-    },
-    files: [
-      {
-        path: 'App.tsx',
-        content: `import { StatusBar } from 'expo-status-bar'
-import { StyleSheet, Text, View } from 'react-native'
-
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>React Native App</Text>
-      <Text>Open App.tsx to start developing</Text>
-      <StatusBar style="auto" />
-    </View>
-  )
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-})`
-      }
-    ]
-  }
-]
+  ]
 
 const categoryIcons: Record<string, React.ReactNode> = {
   frontend: <Globe className="h-4 w-4" />,
   backend: <Server className="h-4 w-4" />,
   fullstack: <Layers className="h-4 w-4" />,
-  api: <Server className="h-4 w-4" />,
-  mobile: <Smartphone className="h-4 w-4" />
+  api: <Server className="h-4 w-4" />
 }
 
 export function ProjectTemplates({
