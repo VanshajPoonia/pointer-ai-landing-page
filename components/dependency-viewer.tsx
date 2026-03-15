@@ -38,14 +38,14 @@ interface Dependency {
 interface DependencyViewerProps {
   isOpen: boolean
   onClose: () => void
-  packageJson: {
+  packageJson?: {
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
     peerDependencies?: Record<string, string>
   }
-  onUpdateDependency: (name: string, version: string) => void
-  onRemoveDependency: (name: string, type: string) => void
-  onAddDependency: (name: string, version: string, type: string) => void
+  onUpdateDependency?: (name: string, version: string) => void
+  onRemoveDependency?: (name: string, type: string) => void
+  onAddDependency?: (name: string, version: string, type: string) => void
 }
 
 // Mock function to simulate fetching package info

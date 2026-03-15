@@ -2,9 +2,14 @@
 
 import { IDEInterface } from '@/components/ide-interface'
 import Link from 'next/link'
+import { useEffect } from 'react'
 
 // Preview page - allows viewing IDE but execution requires login
 export default function IDEPreviewPage() {
+  useEffect(() => {
+    console.log('[v0] IDEPreviewPage mounted')
+  }, [])
+
   return (
     <div className="h-screen flex flex-col">
       {/* Preview banner - positioned above IDE */}

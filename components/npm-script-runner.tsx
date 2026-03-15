@@ -99,11 +99,11 @@ interface ScriptRun {
 interface NpmScriptRunnerProps {
   isOpen: boolean
   onClose: () => void
-  scripts: { name: string; command: string }[]
-  runningScripts: Set<string>
-  scriptOutputs: Record<string, string[]>
-  onRunScript: (name: string) => void
-  onStopScript: (name: string) => void
+  scripts?: { name: string; command: string }[]
+  runningScripts?: Set<string>
+  scriptOutputs?: Record<string, string[]>
+  onRunScript?: (name: string) => void
+  onStopScript?: (name: string) => void
   onAddScript?: (name: string, command: string) => void
   onRemoveScript?: (name: string) => void
 }

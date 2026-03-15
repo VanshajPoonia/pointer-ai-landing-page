@@ -2293,21 +2293,6 @@ ignoredIssues={ignoredIssues}
       <EnvManager
         isOpen={showEnvManager}
         onClose={() => setShowEnvManager(false)}
-        variables={envVariables}
-        onAdd={(variable) => {
-          setEnvVariables([...envVariables, variable])
-        }}
-        onUpdate={(index, variable) => {
-          const newVars = [...envVariables]
-          newVars[index] = variable
-          setEnvVariables(newVars)
-        }}
-        onDelete={(index) => {
-          setEnvVariables(envVariables.filter((_, i) => i !== index))
-        }}
-        onImport={(vars) => {
-          setEnvVariables([...envVariables, ...vars])
-        }}
       />
 
       {/* NPM Script Runner */}

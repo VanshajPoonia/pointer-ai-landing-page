@@ -49,10 +49,13 @@ interface EnvVariable {
 interface EnvManagerProps {
   isOpen: boolean
   onClose: () => void
-  variables?: EnvVariable[]
+  variables?: { key: string; value: string; isSecret: boolean }[]
+  onAdd?: (variable: { key: string; value: string; isSecret: boolean }) => void
+  onUpdate?: (index: number, variable: { key: string; value: string; isSecret: boolean }) => void
+  onDelete?: (index: number) => void
+  onImport?: (vars: { key: string; value: string; isSecret: boolean }[]) => void
   onSave?: (variables: EnvVariable[]) => void
   onExport?: (env: string) => void
-  onImport?: (content: string) => void
 }
 
 export function EnvManager({
