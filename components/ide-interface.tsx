@@ -36,6 +36,15 @@ interface ProjectData {
   description: string | null
 }
 
+interface UserData {
+  id: string
+  email?: string
+  user_metadata?: {
+    avatar_url?: string
+    full_name?: string
+  }
+}
+
 export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [fileSystem, setFileSystem] = useState<FileSystemState>(createDefaultFileSystem())
   const [activeFileId, setActiveFileId] = useState<string | null>(null)
@@ -43,6 +52,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
   const [isRunning, setIsRunning] = useState(false)
+  const [user, setUser] = useState<UserData | null>(null)
   const [executions, setExecutions] = useState(0)
   const [isPaid, setIsPaid] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -59,9 +69,112 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [project, setProject] = useState<ProjectData | null>(null)
   const [loadingProject, setLoadingProject] = useState(!!projectId)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
   const supabase = createClient()
+
+  // Load project data from Supabase
+  const loadProjectData = async () => {
+    if (!projectId) return
+    
+    setLoadingProject(true)
+    try {
+      // Fetch project details
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single()
+      
+      if (projectError || !projectData) {
+        console.error('Failed to load project:', projectError)
+        setLoadingProject(false)
+        return
+      }
+      
+      setProject(projectData)
+      
+      // Update last_opened_at
+      await supabase
+        .from('projects')
+        .update({ last_opened_at: new Date().toISOString() })
+        .eq('id', projectId)
+      
+      // Fetch all files for this project
+      const { data: files, error: filesError } = await supabase
+        .from('files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('type', { ascending: false }) // Folders first
+      
+      if (filesError) {
+        console.error('Failed to load files:', filesError)
+        setLoadingProject(false)
+        return
+      }
+      
+      // Build file system from database files
+      const nodes: Record<string, FileNode> = {
+        root: {
+          id: 'root',
+          name: '~',
+          type: 'folder',
+          children: [],
+          parentId: null,
+        },
+      }
+      
+      // Map database IDs to our internal IDs
+      const dbIdToNodeId: Record<string, string> = {}
+      
+      // First pass: create all nodes
+      files.forEach((file: { id: string; name: string; type: string; content: string | null; language: string | null; parent_id: string | null }) => {
+        const nodeId = `file-${file.id}`
+        dbIdToNodeId[file.id] = nodeId
+        
+        nodes[nodeId] = {
+          id: nodeId,
+          name: file.name,
+          type: file.type as 'file' | 'folder',
+          content: file.content || '',
+          language: file.language || 'javascript',
+          parentId: file.parent_id ? `file-${file.parent_id}` : 'root',
+          children: file.type === 'folder' ? [] : undefined,
+          dbId: file.id, // Store database ID for saving
+        }
+      })
+      
+      // Second pass: build parent-child relationships
+      Object.values(nodes).forEach((node) => {
+        if (node.id !== 'root' && node.parentId) {
+          const parent = nodes[node.parentId]
+          if (parent && parent.children) {
+            parent.children.push(node.id)
+          } else if (node.parentId === 'root') {
+            nodes.root.children?.push(node.id)
+          }
+        }
+      })
+      
+      setFileSystem({ nodes, rootId: 'root' })
+      
+      // Select first file
+      const firstFile = files.find((f: { type: string }) => f.type === 'file')
+      if (firstFile) {
+        const nodeId = dbIdToNodeId[firstFile.id]
+        setActiveFileId(nodeId)
+        setCode(firstFile.content || '')
+        setLanguage(firstFile.language || 'javascript')
+        updatePreviewContent(firstFile.content || '', firstFile.language || 'javascript')
+      }
+      
+    } catch (err) {
+      console.error('Error loading project:', err)
+    } finally {
+      setLoadingProject(false)
+    }
+  }
 
   // Load project data if projectId is provided
   useEffect(() => {
@@ -189,29 +302,88 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     setPreviewContent({ html, css, js })
   }
 
+  // Auto-save to Supabase (debounced)
+  const autoSaveToDb = async (content: string) => {
+    if (!projectId || !activeFileId) return
+    
+    const node = fileSystem.nodes[activeFileId]
+    if (!node?.dbId) return
+    
+    try {
+      await supabase
+        .from('files')
+        .update({ 
+          content, 
+          language,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', node.dbId)
+    } catch (err) {
+      console.error('Auto-save failed:', err)
+    }
+  }
+
   // Trigger analysis when code changes (debounced)
   const handleCodeChange = (newCode: string) => {
     setCode(newCode)
     
+    // Update local file system state
+    if (activeFileId) {
+      const node = fileSystem.nodes[activeFileId]
+      if (node && node.type === 'file') {
+        setFileSystem(prev => ({
+          ...prev,
+          nodes: {
+            ...prev.nodes,
+            [activeFileId]: {
+              ...node,
+              content: newCode,
+            },
+          },
+        }))
+      }
+    }
+    
     // Update preview content
     updatePreviewContent(newCode, language)
     
-    // Clear existing timeout
+    // Clear existing timeouts
     if (analyzeTimeoutRef.current) {
       clearTimeout(analyzeTimeoutRef.current)
+    }
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
     }
     
     // Set new timeout for analysis (2 seconds after user stops typing)
     analyzeTimeoutRef.current = setTimeout(() => {
       analyzeCode(newCode, language)
     }, 2000)
+    
+    // Auto-save after 1 second of no typing
+    if (projectId) {
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        autoSaveToDb(newCode)
+      }, 1000)
+    }
   }
 
   const loadUserData = async () => {
+    // Get authenticated user
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) return
+    
+    setUser({
+      id: authUser.id,
+      email: authUser.email,
+      user_metadata: authUser.user_metadata,
+    })
+    
+    // Get user profile data
     const { data } = await supabase
       .from('users')
       .select('free_executions_remaining, is_premium, is_admin')
-      .eq('id', user.id)
+      .eq('id', authUser.id)
       .single()
 
     if (data) {
@@ -407,10 +579,11 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     }
   }
 
-  const saveFile = () => {
+  const saveFile = async () => {
     if (activeFileId) {
       const node = fileSystem.nodes[activeFileId]
       if (node && node.type === 'file') {
+        // Update local state
         setFileSystem({
           ...fileSystem,
           nodes: {
@@ -422,6 +595,22 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
             },
           },
         })
+        
+        // Sync with Supabase if this is a project file
+        if (projectId && node.dbId) {
+          try {
+            await supabase
+              .from('files')
+              .update({ 
+                content: code, 
+                language,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', node.dbId)
+          } catch (err) {
+            console.error('Failed to save file to database:', err)
+          }
+        }
       }
     }
   }
@@ -498,6 +687,18 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     }
   }
 
+  // Show loading state while loading project
+  if (loadingProject) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#1e1e1e]">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent mx-auto" />
+          <p className="text-[#cccccc]">Loading project...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen flex-col bg-[#1e1e1e]">
       <IDEHeader 
@@ -506,6 +707,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         isPaid={isPaid}
         isAdmin={isAdmin}
         onNewFile={() => handleCreateFile('root')}
+        projectName={project?.name}
       />
       
       <div className="flex flex-1 overflow-hidden">
@@ -740,27 +942,29 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {/* Live Preview Button */}
-              <Button
-                onClick={() => {
-                  setShowLivePreview(!showLivePreview)
-                  // Update preview content when opening
-                  if (!showLivePreview) {
-                    updatePreviewContent(code, language)
-                  }
-                }}
-                size="sm"
-                variant="ghost"
-                className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-                  showLivePreview 
-                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-500' 
-                    : 'text-[#cccccc] hover:bg-[#3c3c3c]'
-                }`}
-                title="Live Preview (HTML/CSS/JS)"
-              >
-                <Eye className="mr-1.5 h-4 w-4" />
-                Preview
-              </Button>
+              {/* Live Preview Button - Only for web projects */}
+              {(!project || project.template === 'web') && (
+                <Button
+                  onClick={() => {
+                    setShowLivePreview(!showLivePreview)
+                    // Update preview content when opening
+                    if (!showLivePreview) {
+                      updatePreviewContent(code, language)
+                    }
+                  }}
+                  size="sm"
+                  variant="ghost"
+                  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+                    showLivePreview 
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-500' 
+                      : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+                  }`}
+                  title="Live Preview (HTML/CSS/JS)"
+                >
+                  <Eye className="mr-1.5 h-4 w-4" />
+                  Preview
+                </Button>
+              )}
               {/* AI Chat Button */}
               <Button
                 onClick={() => setShowAIPanel(!showAIPanel)}
@@ -809,14 +1013,16 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                 }}
               />
             </div>
-            {/* Live Preview Panel */}
-            <LivePreviewPanel
-              html={previewContent.html}
-              css={previewContent.css}
-              javascript={previewContent.js}
-              isOpen={showLivePreview}
-              onClose={() => setShowLivePreview(false)}
-            />
+            {/* Live Preview Panel - Only for web projects */}
+            {(!project || project.template === 'web') && (
+              <LivePreviewPanel
+                html={previewContent.html}
+                css={previewContent.css}
+                javascript={previewContent.js}
+                isOpen={showLivePreview}
+                onClose={() => setShowLivePreview(false)}
+              />
+            )}
             {/* AI Assistant Panel */}
             <AIAssistantPanel
               code={code}

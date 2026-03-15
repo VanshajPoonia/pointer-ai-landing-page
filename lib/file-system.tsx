@@ -7,6 +7,7 @@ export interface FileNode {
   children?: string[] // Only for folders - array of child IDs
   parentId?: string | null
   isNew?: boolean // Flag for newly created files awaiting name input
+  dbId?: string // Database ID for syncing with Supabase
 }
 
 export interface FileSystemState {

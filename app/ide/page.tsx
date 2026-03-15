@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { IDEInterface } from '@/components/ide-interface'
 
 export default async function IDEPage() {
   const supabase = await createClient()
@@ -13,5 +12,6 @@ export default async function IDEPage() {
     redirect('/auth/login')
   }
 
-  return <IDEInterface user={user} />
+  // Redirect to dashboard - users should create/select a project first
+  redirect('/dashboard')
 }
