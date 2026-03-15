@@ -7,6 +7,93 @@ import {
 
 export const maxDuration = 30
 
+// Mock response for when AI Gateway is unavailable (preview mode)
+function createMockResponse(userMessage: string, code?: string): ReadableStream {
+  const encoder = new TextEncoder()
+  
+  let mockResponse = ''
+  
+  if (userMessage.toLowerCase().includes('fix')) {
+    mockResponse = `I'd be happy to help fix your code! 
+
+**Note:** AI features require authentication. In preview mode, I'm showing a demo response.
+
+To enable full AI functionality:
+1. Deploy this project to Vercel
+2. Ensure OIDC is enabled in your project settings
+3. Run \`vercel env pull\` if developing locally
+
+${code ? `Here's your current code for reference:
+\`\`\`
+${code.slice(0, 500)}${code.length > 500 ? '...' : ''}
+\`\`\`` : ''}`
+  } else if (userMessage.toLowerCase().includes('generate') || userMessage.toLowerCase().includes('create')) {
+    mockResponse = `I can help you generate code!
+
+**Note:** AI features require authentication. In preview mode, I'm showing a demo response.
+
+Here's a sample function to get you started:
+
+\`\`\`javascript
+// Example function
+function greet(name) {
+  return \`Hello, \${name}! Welcome to Volt IDE.\`;
+}
+
+console.log(greet('Developer'));
+\`\`\`
+
+To enable full AI code generation, deploy this project to Vercel with OIDC enabled.`
+  } else if (userMessage.toLowerCase().includes('explain')) {
+    mockResponse = `I'd be happy to explain your code!
+
+**Note:** AI features require authentication. In preview mode, I'm showing a demo response.
+
+${code ? `Your code appears to be written in a programming language. A full explanation would analyze:
+- The purpose of each function
+- Variable usage and data flow
+- Logic and control structures
+- Potential improvements` : 'Please add some code to the editor for me to explain.'}`
+  } else {
+    mockResponse = `Thanks for your message!
+
+**Note:** AI features require authentication. In preview mode, I'm showing a demo response.
+
+I'm Volt AI, your coding assistant. I can help you:
+- Generate code from descriptions
+- Fix bugs and errors
+- Explain code line by line
+- Suggest improvements
+
+To enable full AI functionality, deploy this project to Vercel with OIDC authentication enabled.`
+  }
+  
+  return new ReadableStream({
+    start(controller) {
+      // Simulate streaming by sending the response in chunks
+      const lines = mockResponse.split('\n')
+      let index = 0
+      
+      const sendChunk = () => {
+        if (index < lines.length) {
+          const line = lines[index] + '\n'
+          // Format as SSE data
+          controller.enqueue(encoder.encode(`0:${JSON.stringify(line)}\n`))
+          index++
+          setTimeout(sendChunk, 50)
+        } else {
+          // Send finish message
+          controller.enqueue(encoder.encode(`e:{"finishReason":"stop"}\n`))
+          controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`))
+          controller.close()
+        }
+      }
+      
+      sendChunk()
+    }
+  })
+}
+
 export async function POST(req: Request) {
   const { messages, code, language }: { messages: UIMessage[]; code?: string; language?: string } = await req.json()
 
@@ -58,15 +145,40 @@ ${code}
 
 Be helpful, thorough, and always provide working code when appropriate.`
 
-  const result = streamText({
-    model: 'openai/gpt-4o-mini',
-    system: systemPrompt,
-    messages: await convertToModelMessages(messages),
-    abortSignal: req.signal,
-  })
+  try {
+    const result = streamText({
+      model: 'openai/gpt-4o-mini',
+      system: systemPrompt,
+      messages: await convertToModelMessages(messages),
+      abortSignal: req.signal,
+    })
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    consumeSseStream: consumeStream,
-  })
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages,
+      consumeSseStream: consumeStream,
+    })
+  } catch (error: unknown) {
+    // Check if it's an authentication error
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (errorMessage.includes('401') || errorMessage.includes('OIDC') || errorMessage.includes('authentication')) {
+      // Return mock response for preview mode
+      const lastMessage = messages[messages.length - 1]
+      const userText = typeof lastMessage?.content === 'string' 
+        ? lastMessage.content 
+        : Array.isArray(lastMessage?.content) 
+          ? lastMessage.content.map((p: { type: string; text?: string }) => p.type === 'text' ? p.text : '').join(' ')
+          : ''
+      
+      return new Response(createMockResponse(userText, code), {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    }
+    
+    // Re-throw other errors
+    throw error
+  }
 }
