@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from './ui/button'
-import { FilePlus, LogOut, Coffee, Crown, FolderOpen, ChevronLeft, FolderPlus, Save, Play, Terminal } from 'lucide-react'
+import { LogOut, Coffee, Crown, FolderOpen, ChevronLeft, Save, Play } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -21,14 +21,12 @@ interface IDEHeaderProps {
   executions: number
   isPaid: boolean
   isAdmin: boolean
-  onNewFile: () => void
-  onNewFolder?: () => void
   onSave?: () => void
   onRun?: () => void
   projectName?: string
 }
 
-export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile, onNewFolder, onSave, onRun, projectName }: IDEHeaderProps) {
+export function IDEHeader({ user, executions, isPaid, isAdmin, onSave, onRun, projectName }: IDEHeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -61,10 +59,28 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile, onNewF
           </>
         )}
 
-        <div className="h-5 w-px bg-[#3c3c3c]" />
-        
-        {/* Run button - prominent position on the left */}
+        </div>
+
+      <div className="flex items-center gap-3">
         <TooltipProvider delayDuration={200}>
+          {onSave && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onSave}
+                  size="sm"
+                  variant="ghost"
+                  className="h-[26px] px-2 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+                <p>Save <span className="text-[#808080] ml-2">Cmd+S</span></p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
           {onRun && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -82,68 +98,10 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile, onNewF
               </TooltipContent>
             </Tooltip>
           )}
-
-          {onSave && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onSave}
-                  size="sm"
-                  variant="ghost"
-                  className="h-[26px] px-2 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px] ml-1"
-                >
-                  <Save className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
-                <p>Save <span className="text-[#808080] ml-2">Cmd+S</span></p>
-              </TooltipContent>
-            </Tooltip>
-          )}
         </TooltipProvider>
-      </div>
-      
-      {/* Center section - File management */}
-      <div className="flex items-center gap-1">
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={onNewFile}
-                size="sm"
-                variant="ghost"
-                className="h-[26px] px-2.5 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
-              >
-                <FilePlus className="mr-1.5 h-4 w-4" />
-                New File
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
-              <p>New File</p>
-            </TooltipContent>
-          </Tooltip>
 
-          {onNewFolder && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onNewFolder}
-                  size="sm"
-                  variant="ghost"
-                  className="h-[26px] px-2 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
-                >
-                  <FolderPlus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
-                <p>New Folder</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </TooltipProvider>
-      </div>
+        <div className="h-5 w-px bg-[#3c3c3c]" />
 
-      <div className="flex items-center gap-3">
         {isAdmin && (
           <Link href="/admin">
             <Button

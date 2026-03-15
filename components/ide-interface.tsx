@@ -941,8 +941,6 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         executions={executions} 
         isPaid={isPaid}
         isAdmin={isAdmin}
-        onNewFile={() => handleCreateFile('root')}
-        onNewFolder={() => handleCreateFolder('root')}
         onSave={saveFile}
         onRun={runCode}
         projectName={project?.name}
