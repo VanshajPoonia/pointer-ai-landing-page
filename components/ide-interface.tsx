@@ -11,7 +11,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare, Columns, ListTree, History, Wand2 } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare, Columns, ListTree, History, Wand2, X, HelpCircle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +45,7 @@ import { LinterPanel, useLinter } from './linter-panel'
 import { ImportOrganizer } from './import-organizer'
 import { CodeCoverageViewer, generateMockReport, CoverageReport } from './code-coverage'
 import { TypeCheckerPanel, useTypeChecker } from './type-checker'
-import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon, GitMerge, Archive, GitPullRequest, MessageCircle, Code2, Maximize, Layout, PictureInPicture, Bug, X } from 'lucide-react'
+import { Bookmark, Package, BarChart3, AlertCircle as TypeErrorIcon, GitMerge, Archive, GitPullRequest, MessageCircle, Code2, Maximize, Layout, PictureInPicture, Bug } from 'lucide-react'
 // Additional feature imports
 import { MergeConflictResolver } from './merge-conflict-resolver'
 import { StashManager, useStashManager } from './stash-manager'
@@ -61,6 +61,7 @@ import { EnvManager } from './env-manager'
 import { NPMScriptRunner, useNPMScripts } from './npm-script-runner'
 import { DependencyViewer } from './dependency-viewer'
 import { ProjectTemplates } from './project-templates'
+import { FeaturesHelpPanel } from './features-help-panel'
 import { FolderPlus, Terminal as TerminalIcon, FileJson, Key } from 'lucide-react'
 
 interface IDEInterfaceProps {
@@ -86,6 +87,7 @@ interface UserData {
 export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [fileSystem, setFileSystem] = useState<FileSystemState>(createDefaultFileSystem())
   const [activeFileId, setActiveFileId] = useState<string | null>(null)
+  const [openTabs, setOpenTabs] = useState<string[]>([])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
@@ -149,7 +151,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showScriptRunner, setShowScriptRunner] = useState(false)
   const [showDependencyViewer, setShowDependencyViewer] = useState(false)
   const [showProjectTemplates, setShowProjectTemplates] = useState(false)
-  const [openTabs, setOpenTabs] = useState<string[]>([]) // Array of file IDs for open tabs
+  const [showFeaturesHelp, setShowFeaturesHelp] = useState(false)
   const [envVariables, setEnvVariables] = useState<Array<{ key: string; value: string; isSecret: boolean }>>([
     { key: 'DATABASE_URL', value: 'postgresql://...', isSecret: true },
     { key: 'NEXT_PUBLIC_API_URL', value: 'https://api.example.com', isSecret: false }
@@ -607,27 +609,27 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       setActiveFileId(nodeId)
       setCode(node.content || '')
       setLanguage(node.language || 'javascript')
-      // Update preview when selecting a file
-      updatePreviewContent(node.content || '', node.language || 'javascript')
       // Add to open tabs if not already open
       setOpenTabs(prev => prev.includes(nodeId) ? prev : [...prev, nodeId])
+      // Update preview when selecting a file
+      updatePreviewContent(node.content || '', node.language || 'javascript')
     }
   }
 
-  const handleCloseTab = (tabId: string, e?: React.MouseEvent) => {
+  const handleCloseTab = (nodeId: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
     setOpenTabs(prev => {
-      const newTabs = prev.filter(id => id !== tabId)
+      const newTabs = prev.filter(id => id !== nodeId)
       // If closing the active tab, switch to another tab
-      if (activeFileId === tabId && newTabs.length > 0) {
-        const closedIndex = prev.indexOf(tabId)
+      if (activeFileId === nodeId && newTabs.length > 0) {
+        const closedIndex = prev.indexOf(nodeId)
         const newActiveIndex = Math.min(closedIndex, newTabs.length - 1)
         const newActiveId = newTabs[newActiveIndex]
-        const node = fileSystem.nodes[newActiveId]
-        if (node) {
+        const newNode = fileSystem.nodes[newActiveId]
+        if (newNode) {
           setActiveFileId(newActiveId)
-          setCode(node.content || '')
-          setLanguage(node.language || 'javascript')
+          setCode(newNode.content || '')
+          setLanguage(newNode.language || 'javascript')
         }
       } else if (newTabs.length === 0) {
         setActiveFileId(null)
@@ -635,22 +637,6 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       }
       return newTabs
     })
-  }
-
-  const handleCloseAllTabs = () => {
-    setOpenTabs([])
-    setActiveFileId(null)
-    setCode('')
-  }
-
-  const handleCloseOtherTabs = (keepTabId: string) => {
-    setOpenTabs([keepTabId])
-    const node = fileSystem.nodes[keepTabId]
-    if (node) {
-      setActiveFileId(keepTabId)
-      setCode(node.content || '')
-      setLanguage(node.language || 'javascript')
-    }
   }
 
   const handleCreateFile = (parentId: string, startRenaming?: (id: string) => void) => {
@@ -1017,16 +1003,39 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         <div className="flex flex-1 flex-col min-w-0">
           {/* Tab bar with actions */}
           <div className="flex items-center justify-between h-[35px] bg-[#252526] border-b border-[#191919] px-2">
-            <div className="flex items-center h-full">
-              {activeFileId && fileSystem.nodes[activeFileId] ? (
-                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
-                  <FileCode className="h-4 w-4 text-[#519aba]" />
-                  <span>{fileSystem.nodes[activeFileId].name}</span>
-                </div>
+            <div className="flex items-center h-full overflow-x-auto max-w-[300px] scrollbar-thin">
+              {openTabs.length > 0 ? (
+                openTabs.map(tabId => {
+                  const node = fileSystem.nodes[tabId]
+                  if (!node) return null
+                  const isActive = tabId === activeFileId
+                  return (
+                    <div
+                      key={tabId}
+                      onClick={() => handleSelectFile(tabId)}
+                      className={`group flex items-center gap-1.5 px-3 h-full text-[13px] cursor-pointer border-r border-[#191919] transition-all duration-150 ${
+                        isActive
+                          ? 'bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#007acc]'
+                          : 'bg-[#2d2d2d] text-[#969696] hover:bg-[#2a2a2a] border-t-2 border-t-transparent'
+                      }`}
+                    >
+                      <FileCode className={`h-3.5 w-3.5 ${isActive ? 'text-[#519aba]' : 'text-[#6e6e6e]'}`} />
+                      <span className="whitespace-nowrap">{node.name}</span>
+                      <button
+                        onClick={(e) => handleCloseTab(tabId, e)}
+                        className={`ml-1 p-0.5 rounded hover:bg-[#3c3c3c] transition-all duration-150 ${
+                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )
+                })
               ) : (
-                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#ffffff] border-t-2 border-t-[#007acc]">
-                  <FileCode className="h-4 w-4 text-[#519aba]" />
-                  <span>No file selected</span>
+                <div className="flex items-center gap-2 px-3 h-full bg-[#1e1e1e] text-[13px] text-[#808080] border-t-2 border-t-transparent">
+                  <FileCode className="h-4 w-4 text-[#6e6e6e]" />
+                  <span>No file open</span>
                 </div>
               )}
             </div>
@@ -1566,6 +1575,16 @@ onClick={() => pipPreview?.openPiP?.('/api/preview')}
   >
   <PictureInPicture className="h-4 w-4" />
   </Button>
+  {/* Help/Features Button */}
+  <Button
+    onClick={() => setShowFeaturesHelp(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-amber-500 hover:bg-amber-500/10 transition-all duration-150"
+    title="Features & Help"
+  >
+    <HelpCircle className="h-4 w-4" />
+  </Button>
   <div className="w-px h-4 bg-[#3c3c3c] mx-1" />
   {/* Project Management Buttons */}
   <Button
@@ -1635,38 +1654,6 @@ onClick={() => pipPreview?.openPiP?.('/api/preview')}
 {/* Editor Area */}
   <div className="flex-1 min-h-0 flex overflow-hidden">
   <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-  {/* File Tabs */}
-  {openTabs.length > 0 && (
-    <div className="flex items-center bg-[#252526] border-b border-[#191919] overflow-x-auto scrollbar-thin">
-      {openTabs.map(tabId => {
-        const node = fileSystem.nodes[tabId]
-        if (!node) return null
-        const isActive = tabId === activeFileId
-        return (
-          <div
-            key={tabId}
-            onClick={() => handleSelectFile(tabId)}
-            className={`group flex items-center gap-1.5 px-3 py-1.5 text-[12px] cursor-pointer border-r border-[#191919] shrink-0 transition-all duration-150 ${
-              isActive 
-                ? 'bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#0078d4]' 
-                : 'text-[#969696] hover:bg-[#2a2a2a] border-t-2 border-t-transparent'
-            }`}
-          >
-            <FileCode className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate max-w-[120px]">{node.name}</span>
-            <button
-              onClick={(e) => handleCloseTab(tabId, e)}
-              className={`ml-1 p-0.5 rounded hover:bg-[#3c3c3c] transition-opacity duration-150 ${
-                isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-              }`}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )
-      })}
-    </div>
-  )}
   {/* Breadcrumb Navigation */}
   {activeFileId && (
     <BreadcrumbNavigation
@@ -1750,33 +1737,33 @@ onCursorChange={(position, selection) => {
                 onClose={() => setShowLivePreview(false)}
               />
             )}
-{/* AI Assistant Panel */}
-  <AIAssistantPanel
-  code={code}
-  language={language}
-  isOpen={showAIPanel}
-  onClose={() => setShowAIPanel(false)}
-  currentFileName={activeFileId ? fileSystem.nodes[activeFileId]?.name : undefined}
-  projectFiles={Object.values(fileSystem.nodes)
-    .filter(node => node.type === 'file' && node.content)
-    .map(node => ({
-      id: node.id,
-      name: node.name,
-      path: getNodePath(fileSystem, node.id),
-      content: node.content || '',
-      language: node.language || 'plaintext'
-    }))}
-  onCodeChange={(newCode) => {
-  setCode(newCode)
-  updatePreviewContent(newCode, language)
-  // Trigger analysis after AI changes code
-  if (analyzeTimeoutRef.current) {
-  clearTimeout(analyzeTimeoutRef.current)
-  }
-  analyzeTimeoutRef.current = setTimeout(() => {
-  analyzeCode(newCode, language)
-  }, 1000)
-  }}
+            {/* AI Assistant Panel */}
+            <AIAssistantPanel
+              code={code}
+              language={language}
+              isOpen={showAIPanel}
+              onClose={() => setShowAIPanel(false)}
+              onCodeChange={(newCode) => {
+                setCode(newCode)
+                updatePreviewContent(newCode, language)
+                // Trigger analysis after AI changes code
+                if (analyzeTimeoutRef.current) {
+                  clearTimeout(analyzeTimeoutRef.current)
+                }
+                analyzeTimeoutRef.current = setTimeout(() => {
+                  analyzeCode(newCode, language)
+                }, 1000)
+              }}
+              projectFiles={Object.values(fileSystem.nodes)
+                .filter(n => n.type === 'file' && n.content)
+                .map(n => ({
+                  id: n.id,
+                  name: n.name,
+                  path: getNodePath(fileSystem, n.id),
+                  content: n.content || '',
+                  language: n.language || 'text'
+                }))}
+              currentFilePath={activeFileId ? getNodePath(fileSystem, activeFileId) : undefined}
             />
             {/* Snippets Panel */}
             <SnippetsPanel
@@ -2067,12 +2054,15 @@ ignoredIssues={ignoredIssues}
         isOpen={showBookmarksPanel}
         onClose={() => setShowBookmarksPanel(false)}
         bookmarks={bookmarks?.bookmarks || []}
-        onNavigate={(bookmark) => {
+        groups={bookmarks?.groups || []}
+        onAddBookmark={(bookmark) => bookmarks?.addBookmark?.(bookmark)}
+        onRemoveBookmark={(id) => bookmarks?.removeBookmark?.(id)}
+        onUpdateBookmark={(id, updates) => bookmarks?.updateBookmark?.(id, updates)}
+        onNavigateToBookmark={(bookmark) => {
           setActiveFileId(bookmark.fileId)
           const node = fileSystem.nodes[bookmark.fileId]
           if (node?.content) {
             setCode(node.content)
-            // Jump to bookmarked line after a tick
             setTimeout(() => {
               if (editorRef.current) {
                 editorRef.current.revealLineInCenter(bookmark.line)
@@ -2083,9 +2073,12 @@ ignoredIssues={ignoredIssues}
           }
           setShowBookmarksPanel(false)
         }}
-        onRemove={(id) => bookmarks?.removeBookmark?.(id)}
-        onClear={() => bookmarks?.clearAllBookmarks?.()}
-        onUpdateNote={(id, note) => bookmarks?.updateNote?.(id, note)}
+        onCreateGroup={(name) => bookmarks?.createGroup?.(name)}
+        onDeleteGroup={(id) => bookmarks?.deleteGroup?.(id)}
+        onMoveToGroup={(bookmarkId, groupId) => bookmarks?.moveToGroup?.(bookmarkId, groupId)}
+        onToggleGroup={(groupId) => bookmarks?.toggleGroup?.(groupId)}
+        currentFileId={activeFileId || undefined}
+        currentLine={cursorLine}
       />
 
       {/* Linter Panel */}
@@ -2372,6 +2365,12 @@ ignoredIssues={ignoredIssues}
           />
         </div>
       )}
+
+      {/* Features & Help Panel */}
+      <FeaturesHelpPanel
+        isOpen={showFeaturesHelp}
+        onClose={() => setShowFeaturesHelp(false)}
+      />
 
       {/* Environment Variables Manager */}
       <EnvManager

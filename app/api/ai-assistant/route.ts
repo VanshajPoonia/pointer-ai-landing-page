@@ -94,42 +94,60 @@ To enable full AI functionality, deploy this project to Vercel with OIDC authent
   })
 }
 
+interface ProjectFile {
+  id: string
+  name: string
+  path: string
+  content: string
+  language: string
+}
+
 export async function POST(req: Request) {
-  const { messages, code, language, projectContext, currentFileName }: { 
+  const { messages, code, language, projectFiles, currentFilePath }: { 
     messages: UIMessage[]
     code?: string
     language?: string
-    projectContext?: string
-    currentFileName?: string
+    projectFiles?: ProjectFile[]
+    currentFilePath?: string
   } = await req.json()
 
+  // Build project context from all files
+  const projectContext = projectFiles && projectFiles.length > 0
+    ? `## PROJECT FILES (${projectFiles.length} files):
+${projectFiles.map(f => `### ${f.path}
+\`\`\`${f.language || 'text'}
+${f.content.slice(0, 2000)}${f.content.length > 2000 ? '\n... (truncated)' : ''}
+\`\`\``).join('\n\n')}`
+    : ''
+
   // Build system prompt for code assistance
-  const systemPrompt = `You are Volt AI, an expert AI coding assistant similar to Claude Code. You are integrated into the Volt online IDE and can help developers write, debug, and generate code.
+  const systemPrompt = `You are Volt AI, an expert AI coding assistant similar to Claude. You are integrated into the Volt online IDE and have access to the user's ENTIRE PROJECT, not just the current file. You can help with project-wide refactoring, cross-file analysis, and understanding the full codebase.
 
 ## YOUR CAPABILITIES:
-1. **Generate Code**: Write complete, working code from natural language descriptions
-2. **Fix Bugs**: Find and fix all bugs including typos like "console.lg", syntax errors, logic bugs
-3. **Explain Code**: Break down complex code and explain what it does
-4. **Improve Code**: Suggest optimizations, better patterns, and best practices
-5. **Debug**: Help identify why code isn't working
-6. **Modify Code**: Make changes to existing code based on user requests
-7. **Project-Wide Analysis**: Answer questions about the entire project, find patterns, suggest refactors across files
+1. **Project-Wide Understanding**: You can see ALL files in the project and understand how they connect
+2. **Generate Code**: Write complete, working code from natural language descriptions
+3. **Fix Bugs**: Find and fix all bugs including typos, syntax errors, logic bugs across files
+4. **Explain Code**: Break down complex code and explain what it does
+5. **Improve Code**: Suggest optimizations, better patterns, and best practices
+6. **Refactor**: Help restructure code across multiple files
+7. **Navigate**: Help users find where things are defined or used in the project
 
-## CURRENT FILE${currentFileName ? ` (${currentFileName})` : ''}:
-${code ? `The user is currently editing this ${language || 'code'}:
-\`\`\`${language || ''}
+${projectContext}
+
+## CURRENT FILE CONTEXT:
+${currentFilePath ? `Currently editing: **${currentFilePath}**` : ''}
+${code ? `
+\`\`\`${language || 'text'}
 ${code}
 \`\`\`` : 'No code in editor yet.'}
 
-${projectContext ? `## FULL PROJECT CONTEXT:
-You have access to the following project files. Use this context to:
-- Answer questions about how different parts of the codebase work together
-- Suggest improvements that consider the full project structure
-- Find dependencies and relationships between files
-- Provide consistent code style with existing patterns
-${projectContext}` : ''}
-
 ## IMPORTANT INSTRUCTIONS:
+
+### You have project-wide context:
+- You can reference other files in the project
+- You can suggest changes to multiple files
+- You understand imports, exports, and dependencies between files
+- You can help with project architecture questions
 
 ### When generating or fixing code:
 - ALWAYS provide the COMPLETE code in a properly formatted code block
@@ -137,28 +155,18 @@ ${projectContext}` : ''}
 - The user can click "Apply to editor" to replace their code with yours
 - Don't give partial code - give the full working version
 
-### When asked to "generate", "create", "write", or "make" something:
-- Generate complete, working code immediately
-- Include comments explaining key parts
-- Make sure it's ready to run
+### When asked about the project:
+- You can answer questions about any file
+- You can explain how different parts of the codebase work together
+- You can suggest where to add new code based on existing patterns
 
-### When asked to "fix" code:
-- Identify ALL issues (typos, bugs, logic errors)
-- Explain what was wrong
-- Provide the COMPLETE corrected code
+### Examples of project-wide questions:
+- "Where is the User type defined?" -> Search project files and show the location
+- "How does the auth flow work?" -> Explain the full flow across files
+- "Add a new API endpoint" -> Show where and how based on existing patterns
+- "Refactor this function to use the existing utility" -> Reference the utility file
 
-### Check for comment/code mismatches:
-- If a comment says "print user input" but code doesn't take input, point it out
-- If comments don't match what the code does, flag it
-
-### Examples of what users might ask:
-- "Write a function that sorts an array" -> Generate complete sorting function
-- "Fix my code" -> Find all bugs and provide corrected version
-- "Add error handling" -> Modify the code to include try/catch
-- "Make this code faster" -> Optimize and provide improved version
-- "What does this code do?" -> Explain line by line
-
-Be helpful, thorough, and always provide working code when appropriate.`
+Be helpful, thorough, and leverage your full project context to provide accurate answers.`
 
   try {
     const result = streamText({
