@@ -11,7 +11,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ import { SourceControlPanel } from './source-control-panel'
 import { LivePreviewPanel } from './live-preview-panel'
 import { SnippetsPanel } from './snippets-panel'
 import { DeploymentPanel } from './deployment-panel'
+import { AIToolsPanel } from './ai-tools-panel'
 import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
@@ -66,6 +67,8 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showLivePreview, setShowLivePreview] = useState(false)
   const [showSnippetsPanel, setShowSnippetsPanel] = useState(false)
   const [showDeploymentPanel, setShowDeploymentPanel] = useState(false)
+  const [showAIToolsPanel, setShowAIToolsPanel] = useState(false)
+  const [selectedCode, setSelectedCode] = useState('')
   const [aiAutocompleteEnabled, setAiAutocompleteEnabled] = useState(true)
   const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
@@ -1093,6 +1096,21 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
     )}
   </Button>
+  {/* AI Tools Button */}
+  <Button
+    onClick={() => setShowAIToolsPanel(!showAIToolsPanel)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      showAIToolsPanel
+        ? 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="AI Tools: Explain, Document, Fix Bugs, Generate Tests"
+  >
+    <Zap className="mr-1.5 h-4 w-4" />
+    AI Tools
+  </Button>
   {/* AI Chat Button */}
   <Button
     onClick={() => setShowAIPanel(!showAIPanel)}
@@ -1175,6 +1193,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     return suggestion || ''
   }}
   onDismissGhostText={dismissSuggestion}
+  onSelectionChange={(text) => setSelectedCode(text)}
   />
   {/* Collaboration Cursors */}
   {collaborationEnabled && collaborators.length > 0 && (
@@ -1246,6 +1265,27 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                 onClose={() => setShowDeploymentPanel(false)}
               />
             )}
+            {/* AI Tools Panel */}
+            <AIToolsPanel
+              isOpen={showAIToolsPanel}
+              onClose={() => setShowAIToolsPanel(false)}
+              selectedCode={selectedCode || code}
+              language={language}
+              onApplyFix={(fixedCode) => {
+                setCode(fixedCode)
+                handleCodeChange(fixedCode)
+              }}
+              onInsertTests={(testCode) => {
+                // Create a new test file
+                const testFileName = activeFileId 
+                  ? `${fileSystem.nodes[activeFileId]?.name?.replace(/\.\w+$/, '')}.test.${language === 'python' ? 'py' : 'ts'}`
+                  : `tests.${language === 'python' ? 'py' : 'ts'}`
+                // Insert at cursor or append to file
+                const newCode = code + '\n\n// Tests\n' + testCode
+                setCode(newCode)
+                handleCodeChange(newCode)
+              }}
+            />
           </div>
 
 {/* Issues Panel */}
