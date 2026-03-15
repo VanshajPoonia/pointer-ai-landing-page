@@ -26,10 +26,17 @@ import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
 interface IDEInterfaceProps {
-  user: User
+  projectId?: string
 }
 
-export function IDEInterface({ user }: IDEInterfaceProps) {
+interface ProjectData {
+  id: string
+  name: string
+  template: string
+  description: string | null
+}
+
+export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [fileSystem, setFileSystem] = useState<FileSystemState>(createDefaultFileSystem())
   const [activeFileId, setActiveFileId] = useState<string | null>(null)
   const [code, setCode] = useState('')
@@ -49,15 +56,21 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [commentCheckEnabled, setCommentCheckEnabled] = useState(true) // Toggle for comment/code mismatch
   const [ignoredIssues, setIgnoredIssues] = useState<Set<string>>(new Set())
   const [previewContent, setPreviewContent] = useState<{ html: string; css: string; js: string }>({ html: '', css: '', js: '' })
+  const [project, setProject] = useState<ProjectData | null>(null)
+  const [loadingProject, setLoadingProject] = useState(!!projectId)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
   const supabase = createClient()
 
-  // Create initial file on first load
+  // Load project data if projectId is provided
   useEffect(() => {
-    createTemplateFile('javascript')
-  }, [])
+    if (projectId) {
+      loadProjectData()
+    } else {
+      createTemplateFile('javascript')
+    }
+  }, [projectId])
 
   useEffect(() => {
     loadUserData()
