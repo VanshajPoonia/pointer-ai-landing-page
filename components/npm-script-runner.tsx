@@ -62,7 +62,7 @@ export function useNPMScripts(packageJson?: { scripts?: Record<string, string> }
         next.delete(name)
         return next
       })
-      onComplete?.(scriptOutputs[name] || [])
+      onComplete?.(scriptOutputs?.[name] || [])
     }, 2000)
   }
 
@@ -166,7 +166,7 @@ export function NPMScriptRunner({
       scriptName,
       startTime: new Date(),
       status: 'running',
-      output: scriptOutputs[scriptName] || []
+      output: scriptOutputs?.[scriptName] || []
     }
 
     setLocalRunningScripts(prev => ({ ...prev, [scriptName]: run }))
@@ -198,7 +198,7 @@ export function NPMScriptRunner({
             ...updated[name],
             endTime: new Date(),
             status: 'success',
-            output: scriptOutputs[name] || updated[name].output
+            output: scriptOutputs?.[name] || updated[name].output
           }
           setHistory(h => [updated[name], ...h].slice(0, 10))
         }
