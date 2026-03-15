@@ -1624,6 +1624,37 @@ ignoredIssues={ignoredIssues}
               codeNavigation.findAllReferences(selectedCode.trim())
             }
           }},
+          // New feature commands
+          { id: 'toggle-bookmark', name: 'Toggle Bookmark', shortcut: ['Cmd', 'Shift', 'B'], icon: <Bookmark className="h-4 w-4" />, category: 'navigation', action: () => {
+            if (activeFileId) {
+              const node = fileSystem.nodes[activeFileId]
+              if (node) {
+                const preview = code.split('\n')[cursorLine - 1]?.trim() || ''
+                bookmarks.toggleBookmarkAtLine(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
+              }
+            }
+          }},
+          { id: 'show-bookmarks', name: 'Show Bookmarks', icon: <Bookmark className="h-4 w-4" />, category: 'navigation', action: () => setShowBookmarksPanel(true) },
+          { id: 'organize-imports', name: 'Organize Imports', shortcut: ['Cmd', 'Shift', 'O'], icon: <Package className="h-4 w-4" />, category: 'code', action: () => setShowImportOrganizer(true) },
+          { id: 'show-linter', name: 'Show Linter Panel', icon: <AlertCircle className="h-4 w-4" />, category: 'code', action: () => setShowLinterPanel(true) },
+          { id: 'show-coverage', name: 'Show Code Coverage', icon: <BarChart3 className="h-4 w-4" />, category: 'code', action: () => setShowCoverageViewer(true) },
+          { id: 'show-type-checker', name: 'Show Type Checker', icon: <TypeErrorIcon className="h-4 w-4" />, category: 'code', action: () => setShowTypeChecker(true) },
+          { id: 'run-tests', name: 'Run Tests with Coverage', icon: <BarChart3 className="h-4 w-4" />, category: 'code', action: () => {
+            setIsRunningTests(true)
+            setTimeout(() => {
+              const files = Object.values(fileSystem.nodes)
+                .filter(n => n.type === 'file')
+                .map(n => ({
+                  id: n.id,
+                  name: n.name,
+                  path: getNodePath(fileSystem, n.id),
+                  content: n.content
+                }))
+              setCoverageReport(generateMockReport(files))
+              setIsRunningTests(false)
+              setShowCoverageViewer(true)
+            }, 2000)
+          }},
         ]}
       />
 
@@ -1772,13 +1803,149 @@ ignoredIssues={ignoredIssues}
             symbols={parseSymbols(code, activeFileId || 'main', activeFileId ? getNodePath(fileSystem, activeFileId) : 'main.ts')}
             onSelect={(symbol) => {
               // Jump to symbol line in editor
-              console.log('[v0] Jump to symbol:', symbol.name, 'at line', symbol.line)
+              if (editorRef.current && symbol.line) {
+                editorRef.current.revealLineInCenter(symbol.line)
+                editorRef.current.setPosition({ lineNumber: symbol.line, column: 1 })
+                editorRef.current.focus()
+              }
             }}
             isOpen={showDocumentOutline}
             onClose={() => setShowDocumentOutline(false)}
           />
         </div>
       )}
+
+      {/* Bookmarks Panel */}
+      <BookmarksPanel
+        isOpen={showBookmarksPanel}
+        onClose={() => setShowBookmarksPanel(false)}
+        bookmarks={bookmarks.bookmarks}
+        onNavigate={(bookmark) => {
+          setActiveFileId(bookmark.fileId)
+          const node = fileSystem.nodes[bookmark.fileId]
+          if (node?.content) {
+            setCode(node.content)
+            // Jump to bookmarked line after a tick
+            setTimeout(() => {
+              if (editorRef.current) {
+                editorRef.current.revealLineInCenter(bookmark.line)
+                editorRef.current.setPosition({ lineNumber: bookmark.line, column: 1 })
+                editorRef.current.focus()
+              }
+            }, 100)
+          }
+          setShowBookmarksPanel(false)
+        }}
+        onRemove={(id) => bookmarks.removeBookmark(id)}
+        onClear={() => bookmarks.clearAllBookmarks()}
+        onUpdateNote={(id, note) => bookmarks.updateNote(id, note)}
+      />
+
+      {/* Linter Panel */}
+      <LinterPanel
+        isOpen={showLinterPanel}
+        onClose={() => setShowLinterPanel(false)}
+        issues={linter.issues}
+        isAnalyzing={linter.isAnalyzing}
+        config={linter.config}
+        onConfigChange={linter.updateConfig}
+        onFixIssue={(issue) => {
+          if (issue.fix) {
+            setCode(issue.fix)
+            handleCodeChange(issue.fix)
+          }
+        }}
+        onFixAll={() => {
+          const fixedCode = linter.fixAllAuto()
+          if (fixedCode) {
+            setCode(fixedCode)
+            handleCodeChange(fixedCode)
+          }
+        }}
+        onNavigateToIssue={(issue) => {
+          if (editorRef.current) {
+            editorRef.current.revealLineInCenter(issue.line)
+            editorRef.current.setPosition({ lineNumber: issue.line, column: issue.column || 1 })
+            editorRef.current.focus()
+          }
+          setShowLinterPanel(false)
+        }}
+      />
+
+      {/* Import Organizer */}
+      <ImportOrganizer
+        isOpen={showImportOrganizer}
+        onClose={() => setShowImportOrganizer(false)}
+        code={code}
+        language={language}
+        onApply={(organizedCode) => {
+          setCode(organizedCode)
+          handleCodeChange(organizedCode)
+          setShowImportOrganizer(false)
+        }}
+      />
+
+      {/* Code Coverage Viewer */}
+      <CodeCoverageViewer
+        isOpen={showCoverageViewer}
+        onClose={() => setShowCoverageViewer(false)}
+        report={coverageReport}
+        isRunning={isRunningTests}
+        onRunTests={() => {
+          setIsRunningTests(true)
+          // Simulate running tests and generating coverage
+          setTimeout(() => {
+            const files = Object.values(fileSystem.nodes)
+              .filter(n => n.type === 'file')
+              .map(n => ({
+                id: n.id,
+                name: n.name,
+                path: getNodePath(fileSystem, n.id),
+                content: n.content
+              }))
+            setCoverageReport(generateMockReport(files))
+            setIsRunningTests(false)
+          }, 2000)
+        }}
+        onNavigateToFile={(fileId, line) => {
+          setActiveFileId(fileId)
+          const node = fileSystem.nodes[fileId]
+          if (node?.content) {
+            setCode(node.content)
+            setTimeout(() => {
+              if (editorRef.current && line) {
+                editorRef.current.revealLineInCenter(line)
+                editorRef.current.setPosition({ lineNumber: line, column: 1 })
+                editorRef.current.focus()
+              }
+            }, 100)
+          }
+        }}
+      />
+
+      {/* Type Checker Panel */}
+      <TypeCheckerPanel
+        isOpen={showTypeChecker}
+        onClose={() => setShowTypeChecker(false)}
+        errors={typeChecker.errors}
+        isChecking={typeChecker.isChecking}
+        config={typeChecker.config}
+        onConfigChange={typeChecker.updateConfig}
+        onNavigateToError={(error) => {
+          if (editorRef.current) {
+            editorRef.current.revealLineInCenter(error.line)
+            editorRef.current.setPosition({ lineNumber: error.line, column: error.column || 1 })
+            editorRef.current.focus()
+          }
+          setShowTypeChecker(false)
+        }}
+        onApplyFix={(error) => {
+          if (error.fix) {
+            setCode(error.fix)
+            handleCodeChange(error.fix)
+          }
+        }}
+      />
     </div>
   )
 }
