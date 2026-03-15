@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { User } from '@supabase/supabase-js'
 import { CodeEditor } from './code-editor'
 import { XTermTerminal } from './xterm-terminal'
 import { useCollaboration } from '@/hooks/use-collaboration'
@@ -114,7 +113,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [savedVersions, setSavedVersions] = useState<Record<string, string>>({})
   const [selectedCode, setSelectedCode] = useState('')
   const [aiAutocompleteEnabled, setAiAutocompleteEnabled] = useState(true)
-  const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
+  const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git' | 'search' | 'bookmarks' | 'ai' | 'settings' | 'help'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true) // Toggle for AI analysis
@@ -976,6 +975,57 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
             )}
             <GitBranch className="w-6 h-6" />
           </button>
+          {/* Search Button */}
+          <button
+            onClick={() => setShowGlobalSearch(true)}
+            className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-[#858585] hover:text-white"
+            title="Search (Cmd+Shift+F)"
+          >
+            <Search className="w-6 h-6" />
+          </button>
+          {/* Bookmarks Button */}
+          <button
+            onClick={() => setShowBookmarksPanel(true)}
+            className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+              (bookmarks?.bookmarks || []).length > 0 ? 'text-blue-400' : 'text-[#858585] hover:text-white'
+            }`}
+            title="Bookmarks"
+          >
+            <Bookmark className="w-6 h-6" />
+            {(bookmarks?.bookmarks || []).length > 0 && (
+              <span className="absolute top-2 right-2 w-4 h-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                {(bookmarks?.bookmarks || []).length}
+              </span>
+            )}
+          </button>
+          <div className="flex-1" />
+          {/* Bottom icons */}
+          {/* AI Chat Button */}
+          <button
+            onClick={() => setShowAIPanel(!showAIPanel)}
+            className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+              showAIPanel ? 'text-amber-500' : 'text-[#858585] hover:text-white'
+            }`}
+            title="AI Assistant"
+          >
+            <MessageSquare className="w-6 h-6" />
+          </button>
+          {/* Settings Button */}
+          <button
+            onClick={() => setShowSettingsPanel(true)}
+            className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-[#858585] hover:text-white"
+            title="Settings (Cmd+,)"
+          >
+            <Settings className="w-6 h-6" />
+          </button>
+          {/* Help Button */}
+          <button
+            onClick={() => setShowFeaturesHelp(true)}
+            className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-amber-500 hover:text-amber-400"
+            title="Help & Features Guide"
+          >
+            <HelpCircle className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Sidebar Content */}
@@ -1337,11 +1387,11 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   </Button>
   {/* Search Button */}
   <Button
-    onClick={() => setShowQuickOpen(true)}
+    onClick={() => setShowGlobalSearch(true)}
     size="sm"
     variant="ghost"
     className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
-    title="Quick Open (Cmd+P)"
+    title="Search in Files (Cmd+Shift+F)"
   >
     <Search className="mr-1.5 h-4 w-4" />
     Search
