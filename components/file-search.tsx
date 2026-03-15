@@ -302,7 +302,7 @@ export function GlobalSearch({ isOpen, onClose, files, onResultSelect }: GlobalS
   if (!isOpen) return null
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-[400px] bg-[#1e1e1e] border-l border-[#3c3c3c] shadow-xl z-50 flex flex-col">
+    <div className="fixed left-[48px] top-[35px] bottom-[22px] w-[350px] bg-[#1e1e1e] border-r border-[#3c3c3c] shadow-xl z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-[#3c3c3c]">
         <div className="flex items-center gap-2">

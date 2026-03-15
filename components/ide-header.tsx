@@ -1,10 +1,11 @@
 'use client'
 
 import { Button } from './ui/button'
-import { FilePlus, LogOut, Coffee, Crown, FolderOpen, ChevronLeft } from 'lucide-react'
+import { FilePlus, LogOut, Coffee, Crown, FolderOpen, ChevronLeft, FolderPlus, Save, Play, Terminal } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 interface UserData {
   id: string
@@ -21,10 +22,13 @@ interface IDEHeaderProps {
   isPaid: boolean
   isAdmin: boolean
   onNewFile: () => void
+  onNewFolder?: () => void
+  onSave?: () => void
+  onRun?: () => void
   projectName?: string
 }
 
-export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile, projectName }: IDEHeaderProps) {
+export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile, onNewFolder, onSave, onRun, projectName }: IDEHeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -57,15 +61,81 @@ export function IDEHeader({ user, executions, isPaid, isAdmin, onNewFile, projec
           </>
         )}
         
-        <Button
-          onClick={onNewFile}
-          size="sm"
-          variant="ghost"
-          className="h-[26px] px-2.5 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
-        >
-          <FilePlus className="mr-1.5 h-4 w-4" />
-          New File
-        </Button>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onNewFile}
+                  size="sm"
+                  variant="ghost"
+                  className="h-[26px] px-2 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
+                >
+                  <FilePlus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+                <p>New File</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {onNewFolder && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={onNewFolder}
+                    size="sm"
+                    variant="ghost"
+                    className="h-[26px] px-2 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+                  <p>New Folder</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            <div className="h-4 w-px bg-[#3c3c3c] mx-1" />
+
+            {onSave && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={onSave}
+                    size="sm"
+                    variant="ghost"
+                    className="h-[26px] px-2 text-[#cccccc] hover:bg-[#3e3e42] text-[12px] rounded-[3px]"
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+                  <p>Save <span className="text-[#808080] ml-2">Cmd+S</span></p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {onRun && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={onRun}
+                    size="sm"
+                    className="h-[26px] px-2.5 bg-[#0e639c] hover:bg-[#1177bb] text-white text-[12px] rounded-[3px]"
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    Run
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+                  <p>Run Code <span className="text-[#808080] ml-2">Cmd+Enter</span></p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
       </div>
 
       <div className="flex items-center gap-3">

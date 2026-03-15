@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { User } from '@supabase/supabase-js'
 import { CodeEditor } from './code-editor'
 import { XTermTerminal } from './xterm-terminal'
 import { useCollaboration } from '@/hooks/use-collaboration'
@@ -62,7 +61,8 @@ import { NPMScriptRunner, useNPMScripts } from './npm-script-runner'
 import { DependencyViewer } from './dependency-viewer'
 import { ProjectTemplates } from './project-templates'
 import { FeaturesHelpPanel } from './features-help-panel'
-import { FolderPlus, Terminal as TerminalIcon, FileJson, Key } from 'lucide-react'
+import { FolderPlus, Terminal as TerminalIcon, FileJson, Key, Info } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 interface IDEInterfaceProps {
   projectId?: string
@@ -114,7 +114,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [savedVersions, setSavedVersions] = useState<Record<string, string>>({})
   const [selectedCode, setSelectedCode] = useState('')
   const [aiAutocompleteEnabled, setAiAutocompleteEnabled] = useState(true)
-  const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
+  const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git' | 'search' | 'bookmarks' | 'ai' | 'settings' | 'help'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true) // Toggle for AI analysis
@@ -942,41 +942,148 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         isPaid={isPaid}
         isAdmin={isAdmin}
         onNewFile={() => handleCreateFile('root')}
+        onNewFolder={() => handleCreateFolder('root')}
+        onSave={saveFile}
+        onRun={runCode}
         projectName={project?.name}
       />
       
       <div className="flex flex-1 overflow-hidden">
         {/* Activity Bar */}
+        <TooltipProvider delayDuration={200}>
         <div className="w-[48px] bg-[#333333] flex flex-col items-center py-2 border-r border-[#191919]">
-          <button
-            onClick={() => setActiveLeftPanel('files')}
-            className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
-              activeLeftPanel === 'files'
-                ? 'text-white'
-                : 'text-[#858585] hover:text-white'
-            }`}
-            title="Explorer"
-          >
-            {activeLeftPanel === 'files' && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-white" />
-            )}
-            <FileCode className="w-6 h-6" />
-          </button>
-          <button
-            onClick={() => setActiveLeftPanel('git')}
-            className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
-              activeLeftPanel === 'git'
-                ? 'text-white'
-                : 'text-[#858585] hover:text-white'
-            }`}
-            title="Source Control"
-          >
-            {activeLeftPanel === 'git' && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-white" />
-            )}
-            <GitBranch className="w-6 h-6" />
-          </button>
+          {/* Top Section - File Management */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setActiveLeftPanel('files')}
+                className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+                  activeLeftPanel === 'files' ? 'text-white' : 'text-[#858585] hover:text-white'
+                }`}
+              >
+                {activeLeftPanel === 'files' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-white" />}
+                <FileCode className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Explorer</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowGlobalSearch(true)}
+                className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-[#858585] hover:text-white"
+              >
+                <Search className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Search in Files <span className="text-[#808080] ml-2">Cmd+Shift+F</span></p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setActiveLeftPanel('git')}
+                className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+                  activeLeftPanel === 'git' ? 'text-white' : 'text-[#858585] hover:text-white'
+                }`}
+              >
+                {activeLeftPanel === 'git' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 bg-white" />}
+                <GitBranch className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Source Control</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowBookmarksPanel(true)}
+                className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+                  (bookmarks?.bookmarks || []).length > 0 ? 'text-blue-400' : 'text-[#858585] hover:text-white'
+                }`}
+              >
+                <Bookmark className="w-6 h-6" />
+                {(bookmarks?.bookmarks || []).length > 0 && (
+                  <span className="absolute top-2 right-2 w-4 h-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                    {(bookmarks?.bookmarks || []).length}
+                  </span>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Bookmarks ({(bookmarks?.bookmarks || []).length})</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowDebuggerPanel(true)}
+                className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-[#858585] hover:text-white"
+              >
+                <Bug className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Run and Debug</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <div className="flex-1" />
+
+          {/* Bottom Section - AI & Settings */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowAIPanel(!showAIPanel)}
+                className={`w-[48px] h-[48px] flex items-center justify-center transition-colors relative ${
+                  showAIPanel ? 'text-amber-500' : 'text-[#858585] hover:text-white'
+                }`}
+              >
+                <MessageSquare className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>AI Assistant <span className="text-[#808080] ml-2">Cmd+Shift+A</span></p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowSettingsPanel(true)}
+                className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-[#858585] hover:text-white"
+              >
+                <Settings className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Settings <span className="text-[#808080] ml-2">Cmd+,</span></p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowFeaturesHelp(true)}
+                className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-amber-500 hover:text-amber-400"
+              >
+                <HelpCircle className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252526] border-[#454545] text-[#cccccc]">
+              <p>Help & Tutorial Guide</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
+        </TooltipProvider>
 
         {/* Sidebar Content */}
         <div className="w-[240px] bg-[#252526] border-r border-[#191919]">
@@ -1335,17 +1442,6 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     <MessageSquare className="mr-1.5 h-4 w-4" />
   AI Chat
   </Button>
-  {/* Search Button */}
-  <Button
-    onClick={() => setShowQuickOpen(true)}
-    size="sm"
-    variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
-    title="Quick Open (Cmd+P)"
-  >
-    <Search className="mr-1.5 h-4 w-4" />
-    Search
-  </Button>
   {/* Command Palette Button */}
   <Button
     onClick={() => setShowCommandPalette(true)}
@@ -1355,16 +1451,6 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     title="Command Palette (Cmd+Shift+P)"
   >
     <Command className="mr-1.5 h-4 w-4" />
-  </Button>
-  {/* Settings Button */}
-  <Button
-    onClick={() => setShowSettingsPanel(true)}
-    size="sm"
-    variant="ghost"
-    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c] shrink-0 transition-all duration-150"
-    title="Settings (Cmd+,)"
-  >
-    <Settings className="h-4 w-4" />
   </Button>
   {/* Diff Viewer Button */}
   <Button
@@ -1416,23 +1502,6 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   title="AI Refactoring"
   >
   <Wand2 className="h-4 w-4" />
-  </Button>
-  {/* Bookmarks Button */}
-  <Button
-    onClick={() => setShowBookmarksPanel(true)}
-    size="sm"
-    variant="ghost"
-    className={`h-[26px] px-3 text-[12px] rounded-[3px] shrink-0 transition-all duration-150 ${
-      (bookmarks?.bookmarks || []).length > 0
-        ? 'text-blue-400'
-        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
-    }`}
-    title="Bookmarks (Cmd+Shift+B to toggle)"
-  >
-    <Bookmark className="h-4 w-4" />
-    {(bookmarks?.bookmarks || []).length > 0 && (
-      <span className="ml-1 text-[10px]">{(bookmarks?.bookmarks || []).length}</span>
-    )}
   </Button>
   {/* Linter Panel Button */}
   <Button
@@ -1856,6 +1925,40 @@ ignoredIssues={ignoredIssues}
         </div>
       </div>
 
+      {/* VS Code-style Status Bar */}
+      <div className="h-[22px] bg-[#007acc] flex items-center justify-between px-2 text-[11px] text-white shrink-0">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveLeftPanel('git')} 
+            className="flex items-center gap-1 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            <span>main</span>
+          </button>
+          <button 
+            onClick={() => setShowIssuesPanel(!showIssuesPanel)}
+            className="flex items-center gap-1 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+          >
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>{codeIssues.filter(i => i.severity === 'error').length}</span>
+            <AlertTriangle className="h-3.5 w-3.5 ml-1" />
+            <span>{codeIssues.filter(i => i.severity === 'warning').length}</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-white/70">Ln {cursorLine}, Col 1</span>
+          <span className="text-white/70">{language.toUpperCase()}</span>
+          <span className="text-white/70">UTF-8</span>
+          <button 
+            onClick={() => setShowFeaturesHelp(true)}
+            className="flex items-center gap-1 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+          >
+            <Info className="h-3.5 w-3.5" />
+            <span>Volt IDE</span>
+          </button>
+        </div>
+      </div>
+
       {/* Command Palette */}
       <CommandPalette
         isOpen={showCommandPalette}
@@ -2123,6 +2226,14 @@ ignoredIssues={ignoredIssues}
           handleCodeChange(organizedCode)
           setShowImportOrganizer(false)
         }}
+      />
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={showSettingsPanel}
+        onClose={() => setShowSettingsPanel(false)}
+        settings={editorSettings}
+        onSettingsChange={setEditorSettings}
       />
 
       {/* Code Coverage Viewer */}
