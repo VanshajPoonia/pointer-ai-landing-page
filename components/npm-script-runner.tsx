@@ -241,7 +241,7 @@ export function NPMScriptRunner({
               <Package className="h-5 w-5 text-red-400" />
               <span>NPM Scripts</span>
               <Badge className="bg-[#3c3c3c] text-[#cccccc] text-xs">
-                {packageJson?.name || 'project'}
+                project
               </Badge>
             </div>
             <div className="flex items-center gap-2">
