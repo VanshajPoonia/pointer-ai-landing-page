@@ -21,6 +21,7 @@ import {
 import { AIAssistantPanel } from './ai-assistant-panel'
 import { IssuesPanel } from './issues-panel'
 import { SourceControlPanel } from './source-control-panel'
+import { LivePreviewPanel } from './live-preview-panel'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
 
@@ -40,12 +41,14 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [showAIPanel, setShowAIPanel] = useState(true) // Open by default
   const [showIssuesPanel, setShowIssuesPanel] = useState(false)
+  const [showLivePreview, setShowLivePreview] = useState(false)
   const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true) // Toggle for AI analysis
   const [commentCheckEnabled, setCommentCheckEnabled] = useState(true) // Toggle for comment/code mismatch
   const [ignoredIssues, setIgnoredIssues] = useState<Set<string>>(new Set())
+  const [previewContent, setPreviewContent] = useState<{ html: string; css: string; js: string }>({ html: '', css: '', js: '' })
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
 
@@ -141,9 +144,44 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
     setIgnoredIssues(prev => new Set([...prev, issueId]))
   }
 
+  // Update preview content based on current file and file system
+  const updatePreviewContent = (currentCode: string, currentLang: string) => {
+    let html = ''
+    let css = ''
+    let js = ''
+    
+    // If current file is HTML/CSS/JS, use it
+    if (currentLang === 'html') {
+      html = currentCode
+    } else if (currentLang === 'css') {
+      css = currentCode
+    } else if (currentLang === 'javascript' || currentLang === 'typescript') {
+      js = currentCode
+    }
+    
+    // Also check for other files in the file system
+    Object.values(fileSystem.nodes).forEach((node) => {
+      if (node.type === 'file' && node.content) {
+        const ext = node.name.split('.').pop()?.toLowerCase()
+        if (ext === 'html' && currentLang !== 'html') {
+          html = node.content
+        } else if (ext === 'css' && currentLang !== 'css') {
+          css = node.content
+        } else if ((ext === 'js' || ext === 'ts') && currentLang !== 'javascript' && currentLang !== 'typescript') {
+          js = node.content
+        }
+      }
+    })
+    
+    setPreviewContent({ html, css, js })
+  }
+
   // Trigger analysis when code changes (debounced)
   const handleCodeChange = (newCode: string) => {
     setCode(newCode)
+    
+    // Update preview content
+    updatePreviewContent(newCode, language)
     
     // Clear existing timeout
     if (analyzeTimeoutRef.current) {
@@ -176,6 +214,8 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
       setActiveFileId(nodeId)
       setCode(node.content || '')
       setLanguage(node.language || 'javascript')
+      // Update preview when selecting a file
+      updatePreviewContent(node.content || '', node.language || 'javascript')
     }
   }
 
@@ -687,6 +727,27 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
+              {/* Live Preview Button */}
+              <Button
+                onClick={() => {
+                  setShowLivePreview(!showLivePreview)
+                  // Update preview content when opening
+                  if (!showLivePreview) {
+                    updatePreviewContent(code, language)
+                  }
+                }}
+                size="sm"
+                variant="ghost"
+                className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+                  showLivePreview 
+                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-500' 
+                    : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+                }`}
+                title="Live Preview (HTML/CSS/JS)"
+              >
+                <Eye className="mr-1.5 h-4 w-4" />
+                Preview
+              </Button>
               {/* AI Chat Button */}
               <Button
                 onClick={() => setShowAIPanel(!showAIPanel)}
@@ -735,6 +796,14 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
                 }}
               />
             </div>
+            {/* Live Preview Panel */}
+            <LivePreviewPanel
+              html={previewContent.html}
+              css={previewContent.css}
+              javascript={previewContent.js}
+              isOpen={showLivePreview}
+              onClose={() => setShowLivePreview(false)}
+            />
             {/* AI Assistant Panel */}
             <AIAssistantPanel
               code={code}
@@ -743,6 +812,7 @@ export function IDEInterface({ user }: IDEInterfaceProps) {
               onClose={() => setShowAIPanel(false)}
               onCodeChange={(newCode) => {
                 setCode(newCode)
+                updatePreviewContent(newCode, language)
                 // Trigger analysis after AI changes code
                 if (analyzeTimeoutRef.current) {
                   clearTimeout(analyzeTimeoutRef.current)
