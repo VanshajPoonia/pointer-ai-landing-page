@@ -941,8 +941,6 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         executions={executions} 
         isPaid={isPaid}
         isAdmin={isAdmin}
-        onNewFile={() => handleCreateFile('root')}
-        onNewFolder={() => handleCreateFolder('root')}
         onSave={saveFile}
         onRun={runCode}
         projectName={project?.name}
@@ -973,7 +971,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setShowGlobalSearch(true)}
+                onClick={() => setShowGlobalSearch(!showGlobalSearch)}
                 className="w-[48px] h-[48px] flex items-center justify-center transition-colors relative text-[#858585] hover:text-white"
               >
                 <Search className="w-6 h-6" />

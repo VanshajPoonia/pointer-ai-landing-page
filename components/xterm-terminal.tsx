@@ -94,28 +94,25 @@ export function XTermTerminal({ onClear, fileSystem, onUpdateFileSystem }: XTerm
         return ''
 
       case 'help':
-        return `${COLORS.cyan}${COLORS.bold}
-╭─────────────────────────────────────────────────────────────╮
-│                    VOLT TERMINAL v3.0                       │
-├─────────────────────────────────────────────────────────────┤
-│  ${COLORS.yellow}FILE OPERATIONS${COLORS.cyan}                                            │
-│    ls [-la]         List files                              │
-│    cd <dir>         Change directory                        │
-│    pwd              Print working directory                 │
-│    cat <file>       Display file contents                   │
-│    touch <file>     Create empty file                       │
-│    mkdir <dir>      Create directory                        │
-│    rm <path>        Remove file/folder                      │
-│    tree             Show directory tree                     │
-├─────────────────────────────────────────────────────────────┤
-│  ${COLORS.yellow}SYSTEM COMMANDS${COLORS.cyan}                                           │
-│    echo <text>      Print text                              │
-│    date             Show current date/time                  │
-│    whoami           Display current user                    │
-│    clear            Clear terminal                          │
-│    history          Show command history                    │
-│    help             Show this help message                  │
-╰─────────────────────────────────────────────────────────────╯${COLORS.reset}`
+        return `${COLORS.cyan}${COLORS.bold}VOLT TERMINAL v3.0${COLORS.reset}
+
+${COLORS.yellow}FILE OPERATIONS${COLORS.reset}
+  ${COLORS.green}ls [-la]${COLORS.reset}      List files
+  ${COLORS.green}cd <dir>${COLORS.reset}      Change directory
+  ${COLORS.green}pwd${COLORS.reset}           Print working directory
+  ${COLORS.green}cat <file>${COLORS.reset}    Display file contents
+  ${COLORS.green}touch <file>${COLORS.reset}  Create empty file
+  ${COLORS.green}mkdir <dir>${COLORS.reset}   Create directory
+  ${COLORS.green}rm <path>${COLORS.reset}     Remove file/folder
+  ${COLORS.green}tree${COLORS.reset}          Show directory tree
+
+${COLORS.yellow}SYSTEM COMMANDS${COLORS.reset}
+  ${COLORS.green}echo <text>${COLORS.reset}   Print text
+  ${COLORS.green}date${COLORS.reset}          Show current date/time
+  ${COLORS.green}whoami${COLORS.reset}        Display current user
+  ${COLORS.green}clear${COLORS.reset}         Clear terminal
+  ${COLORS.green}history${COLORS.reset}       Show command history
+  ${COLORS.green}help${COLORS.reset}          Show this help message`
 
       case 'ls': {
         if (!currentNode || currentNode.type !== 'folder' || !currentNode.children) {
