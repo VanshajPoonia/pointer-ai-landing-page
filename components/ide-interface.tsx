@@ -11,7 +11,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare, Columns, ListTree, History, Wand2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,10 @@ import { CommandPalette, KeyboardShortcutsPanel, defaultShortcuts, useKeyboardSh
 import { SettingsPanel, defaultSettings, EditorSettings } from './settings-panel'
 import { QuickOpen, GlobalSearch } from './file-search'
 import { DiffViewer } from './diff-viewer'
+import { SplitEditor, useSplitEditor, EditorPane } from './split-editor'
+import { useCodeNavigation, GoToDefinitionDialog, FindReferencesDialog, DocumentOutline, parseSymbols } from './code-navigation'
+import { GitBlameView, generateMockBlameData, FileHistory, generateMockCommitHistory } from './git-blame'
+import { AIRefactoringPanel } from './ai-refactoring-panel'
 import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
@@ -94,6 +98,11 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [project, setProject] = useState<ProjectData | null>(null)
   const [loadingProject, setLoadingProject] = useState(!!projectId)
   const [collaborationEnabled, setCollaborationEnabled] = useState(false)
+  // New features state
+  const [showGitBlame, setShowGitBlame] = useState(false)
+  const [showFileHistory, setShowFileHistory] = useState(false)
+  const [showRefactoringPanel, setShowRefactoringPanel] = useState(false)
+  const [showDocumentOutline, setShowDocumentOutline] = useState(false)
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
@@ -120,6 +129,16 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       setRecentFiles(prev => [activeFileId, ...prev.slice(0, 9)])
     }
   }, [activeFileId])
+
+  // Code navigation hook
+  const codeNavigation = useCodeNavigation(
+    Object.values(fileSystem.nodes).map(node => ({
+      id: node.id,
+      name: node.name,
+      path: getNodePath(fileSystem, node.id),
+      content: node.content
+    }))
+  )
 
   // AI Autocomplete hook
   const {
@@ -1203,7 +1222,41 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
     title="Compare Changes"
   >
-    <GitCompare className="h-4 w-4" />
+  <GitCompare className="h-4 w-4" />
+  </Button>
+  {/* Git Blame Button */}
+  <Button
+    onClick={() => setShowGitBlame(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Git Blame"
+  >
+    <History className="h-4 w-4" />
+  </Button>
+  {/* Document Outline Button */}
+  <Button
+    onClick={() => setShowDocumentOutline(!showDocumentOutline)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      showDocumentOutline
+        ? 'bg-blue-500/20 text-blue-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="Document Outline"
+  >
+    <ListTree className="h-4 w-4" />
+  </Button>
+  {/* AI Refactoring Button */}
+  <Button
+    onClick={() => setShowRefactoringPanel(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="AI Refactoring"
+  >
+    <Wand2 className="h-4 w-4" />
   </Button>
   <Button
     onClick={saveFile}
@@ -1420,6 +1473,25 @@ ignoredIssues={ignoredIssues}
           { id: 'toggle-preview', name: 'Toggle Live Preview', icon: <Eye className="h-4 w-4" />, category: 'view', action: () => setShowLivePreview(!showLivePreview) },
 { id: 'toggle-issues', name: 'Toggle Issues Panel', icon: <AlertCircle className="h-4 w-4" />, category: 'view', action: () => setShowIssuesPanel(!showIssuesPanel) },
           { id: 'compare-changes', name: 'Compare Changes (Diff)', icon: <GitCompare className="h-4 w-4" />, category: 'view', action: () => { setDiffOriginalCode(savedVersions[activeFileId || ''] || code); setShowDiffViewer(true) } },
+          { id: 'git-blame', name: 'Show Git Blame', icon: <History className="h-4 w-4" />, category: 'view', action: () => setShowGitBlame(true) },
+          { id: 'file-history', name: 'Show File History', icon: <History className="h-4 w-4" />, category: 'view', action: () => setShowFileHistory(true) },
+          { id: 'document-outline', name: 'Toggle Document Outline', icon: <ListTree className="h-4 w-4" />, category: 'view', action: () => setShowDocumentOutline(!showDocumentOutline) },
+          { id: 'ai-refactor', name: 'AI Refactoring', icon: <Wand2 className="h-4 w-4" />, category: 'ai', action: () => setShowRefactoringPanel(true) },
+          { id: 'go-to-definition', name: 'Go to Definition', shortcut: ['F12'], category: 'navigation', action: () => {
+            if (selectedCode) {
+              const def = codeNavigation.goToDefinition(selectedCode.trim())
+              if (def) {
+                setActiveFileId(def.fileId)
+                const node = fileSystem.nodes[def.fileId]
+                if (node?.content) setCode(node.content)
+              }
+            }
+          }},
+          { id: 'find-references', name: 'Find All References', shortcut: ['Shift', 'F12'], category: 'navigation', action: () => {
+            if (selectedCode) {
+              codeNavigation.findAllReferences(selectedCode.trim())
+            }
+          }},
         ]}
       />
 
@@ -1491,6 +1563,90 @@ ignoredIssues={ignoredIssues}
         modifiedTitle={activeFileId ? `${fileSystem.nodes[activeFileId]?.name} (current)` : 'Modified'}
         language={language}
       />
+
+      {/* Git Blame View */}
+      <GitBlameView
+        isOpen={showGitBlame}
+        onClose={() => setShowGitBlame(false)}
+        fileName={activeFileId ? fileSystem.nodes[activeFileId]?.name || 'Untitled' : 'Untitled'}
+        code={code}
+        blameData={generateMockBlameData(code)}
+        onLineClick={(line) => {
+          // Could integrate with editor to jump to line
+          console.log('[v0] Jump to line:', line)
+        }}
+      />
+
+      {/* File History */}
+      <FileHistory
+        isOpen={showFileHistory}
+        onClose={() => setShowFileHistory(false)}
+        fileName={activeFileId ? fileSystem.nodes[activeFileId]?.name || 'Untitled' : 'Untitled'}
+        commits={generateMockCommitHistory(activeFileId ? fileSystem.nodes[activeFileId]?.name || 'file' : 'file')}
+        onCommitSelect={(commit) => {
+          console.log('[v0] Selected commit:', commit.hash)
+          // Could load the file version at that commit
+          setShowFileHistory(false)
+        }}
+      />
+
+      {/* AI Refactoring Panel */}
+      <AIRefactoringPanel
+        isOpen={showRefactoringPanel}
+        onClose={() => setShowRefactoringPanel(false)}
+        selectedCode={selectedCode || code}
+        language={language}
+        onApplyRefactoring={(refactoredCode) => {
+          setCode(refactoredCode)
+          handleCodeChange(refactoredCode)
+        }}
+      />
+
+      {/* Go to Definition Dialog */}
+      {codeNavigation.goToDefDialog && (
+        <GoToDefinitionDialog
+          isOpen={!!codeNavigation.goToDefDialog}
+          onClose={() => codeNavigation.setGoToDefDialog(null)}
+          symbol={codeNavigation.goToDefDialog.symbol}
+          definitions={codeNavigation.goToDefDialog.definitions}
+          onSelect={(def) => {
+            setActiveFileId(def.fileId)
+            const node = fileSystem.nodes[def.fileId]
+            if (node?.content) setCode(node.content)
+          }}
+        />
+      )}
+
+      {/* Find References Dialog */}
+      {codeNavigation.findRefsDialog && (
+        <FindReferencesDialog
+          isOpen={!!codeNavigation.findRefsDialog}
+          onClose={() => codeNavigation.setFindRefsDialog(null)}
+          symbol={codeNavigation.findRefsDialog.symbol}
+          references={codeNavigation.findRefsDialog.references}
+          definition={codeNavigation.findRefsDialog.definition}
+          onSelect={(ref) => {
+            setActiveFileId(ref.fileId)
+            const node = fileSystem.nodes[ref.fileId]
+            if (node?.content) setCode(node.content)
+          }}
+        />
+      )}
+
+      {/* Document Outline */}
+      {showDocumentOutline && (
+        <div className="fixed right-0 top-[50px] bottom-0 z-40">
+          <DocumentOutline
+            symbols={parseSymbols(code, activeFileId || 'main', activeFileId ? getNodePath(fileSystem, activeFileId) : 'main.ts')}
+            onSelect={(symbol) => {
+              // Jump to symbol line in editor
+              console.log('[v0] Jump to symbol:', symbol.name, 'at line', symbol.line)
+            }}
+            isOpen={showDocumentOutline}
+            onClose={() => setShowDocumentOutline(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }
