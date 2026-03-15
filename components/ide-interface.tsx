@@ -2228,6 +2228,14 @@ ignoredIssues={ignoredIssues}
         }}
       />
 
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={showSettingsPanel}
+        onClose={() => setShowSettingsPanel(false)}
+        settings={editorSettings}
+        onSettingsChange={setEditorSettings}
+      />
+
       {/* Code Coverage Viewer */}
       <CodeCoverageViewer
         isOpen={showCoverageViewer}
