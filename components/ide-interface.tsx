@@ -220,15 +220,15 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
         const node = fileSystem.nodes[activeFileId]
         if (node) {
           const preview = code.split('\n')[cursorLine - 1]?.trim() || ''
-          bookmarks.toggleBookmarkAtLine(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
+          bookmarks?.toggleBookmarkAtLine?.(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
         }
       }
     },
     'cmd+shift+o': () => setShowImportOrganizer(true),
-    'cmd+shift+z': () => zenMode.toggleZenMode(),
-    'f5': () => debugger_.isDebugging ? debugger_.continueExecution() : debugger_.startDebugging(),
-    'f10': () => debugger_.stepOver(),
-    'f11': () => debugger_.stepInto(),
+    'cmd+shift+z': () => zenMode?.toggleZenMode?.(),
+    'f5': () => debugger_?.isDebugging ? debugger_?.continueExecution?.() : debugger_?.startDebugging?.(),
+    'f10': () => debugger_?.stepOver?.(),
+    'f11': () => debugger_?.stepInto?.(),
   })
 
   // Track recent files
@@ -1372,15 +1372,15 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     size="sm"
     variant="ghost"
     className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-      bookmarks.bookmarks.length > 0
+      (bookmarks?.bookmarks || []).length > 0
         ? 'text-blue-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
     }`}
     title="Bookmarks (Cmd+Shift+B to toggle)"
   >
     <Bookmark className="h-4 w-4" />
-    {bookmarks.bookmarks.length > 0 && (
-      <span className="ml-1 text-[10px]">{bookmarks.bookmarks.length}</span>
+    {(bookmarks?.bookmarks || []).length > 0 && (
+      <span className="ml-1 text-[10px]">{(bookmarks?.bookmarks || []).length}</span>
     )}
   </Button>
   {/* Linter Panel Button */}
@@ -1389,17 +1389,17 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     size="sm"
     variant="ghost"
     className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-      linter.issues.filter(i => i.severity === 'error').length > 0
+      (linter.issues || []).filter(i => i.severity === 'error').length > 0
         ? 'text-red-400'
-        : linter.issues.filter(i => i.severity === 'warning').length > 0
+        : (linter.issues || []).filter(i => i.severity === 'warning').length > 0
         ? 'text-yellow-400'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
     }`}
     title="ESLint/Prettier"
   >
     <AlertCircle className="h-4 w-4" />
-    {linter.issues.length > 0 && (
-      <span className="ml-1 text-[10px]">{linter.issues.length}</span>
+    {(linter.issues || []).length > 0 && (
+      <span className="ml-1 text-[10px]">{(linter.issues || []).length}</span>
     )}
   </Button>
   {/* Import Organizer Button */}
@@ -1432,17 +1432,17 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   size="sm"
   variant="ghost"
   className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-  typeChecker.errors.filter(e => e.severity === 'error').length > 0
+  (typeChecker.errors || []).filter(e => e.severity === 'error').length > 0
   ? 'text-red-400'
-  : typeChecker.errors.length > 0
+  : (typeChecker.errors || []).length > 0
   ? 'text-yellow-400'
   : 'text-[#cccccc] hover:bg-[#3c3c3c]'
   }`}
   title="TypeScript Type Checker"
   >
   <TypeErrorIcon className="h-4 w-4" />
-  {typeChecker.errors.length > 0 && (
-    <span className="ml-1 text-[10px]">{typeChecker.errors.length}</span>
+  {(typeChecker.errors || []).length > 0 && (
+    <span className="ml-1 text-[10px]">{(typeChecker.errors || []).length}</span>
   )}
   </Button>
   {/* Debugger Button */}
@@ -1451,8 +1451,8 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     size="sm"
     variant="ghost"
     className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-      debugger_.isDebugging
-        ? debugger_.isPaused
+      debugger_?.isDebugging
+        ? debugger_?.isPaused
           ? 'text-yellow-400 bg-yellow-500/10'
           : 'text-green-400 bg-green-500/10'
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
@@ -1494,7 +1494,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   <div className="w-px h-4 bg-[#3c3c3c] mx-1" />
   {/* Zen Mode Button */}
   <Button
-    onClick={zenMode.toggleZenMode}
+    onClick={() => zenMode?.toggleZenMode?.()}
     size="sm"
     variant="ghost"
     className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
@@ -1514,11 +1514,11 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   </Button>
 {/* PiP Preview Button */}
   <Button
-  onClick={() => pipPreview.openPiP('/api/preview')}
-  size="sm"
-  variant="ghost"
-  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-  pipPreview.isOpen ? 'text-blue-400 bg-blue-500/10' : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+onClick={() => pipPreview?.openPiP?.('/api/preview')}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      pipPreview?.isOpen ? 'text-blue-400 bg-blue-500/10' : 'text-[#cccccc] hover:bg-[#3c3c3c]'
   }`}
   title="Picture-in-Picture Preview"
   >
@@ -1549,15 +1549,15 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     size="sm"
     variant="ghost"
     className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-      npmScripts.runningScripts.size > 0 
+      (npmScripts?.runningScripts?.size || 0) > 0 
         ? 'text-green-400 bg-green-500/10' 
         : 'text-[#cccccc] hover:bg-[#3c3c3c]'
     }`}
     title="NPM Scripts"
   >
     <TerminalIcon className="h-4 w-4" />
-    {npmScripts.runningScripts.size > 0 && (
-      <span className="ml-1 text-[10px]">{npmScripts.runningScripts.size}</span>
+    {(npmScripts?.runningScripts?.size || 0) > 0 && (
+      <span className="ml-1 text-[10px]">{npmScripts?.runningScripts?.size || 0}</span>
     )}
   </Button>
   <Button
@@ -1828,7 +1828,7 @@ ignoredIssues={ignoredIssues}
               const node = fileSystem.nodes[activeFileId]
               if (node) {
                 const preview = code.split('\n')[cursorLine - 1]?.trim() || ''
-                bookmarks.toggleBookmarkAtLine(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
+                bookmarks?.toggleBookmarkAtLine?.(activeFileId, node.name, getNodePath(fileSystem, activeFileId), cursorLine, preview)
               }
             }
           }},
@@ -1854,41 +1854,6 @@ ignoredIssues={ignoredIssues}
             }, 2000)
           }},
         ]}
-      />
-
-      {/* Keyboard Shortcuts Panel */}
-      <KeyboardShortcutsPanel
-        isOpen={showKeyboardShortcuts}
-        onClose={() => setShowKeyboardShortcuts(false)}
-        shortcuts={defaultShortcuts}
-      />
-
-      {/* Settings Panel */}
-      <SettingsPanel
-        isOpen={showSettingsPanel}
-        onClose={() => setShowSettingsPanel(false)}
-        settings={editorSettings}
-        onSettingsChange={setEditorSettings}
-      />
-
-      {/* Quick Open (File Search) */}
-      <QuickOpen
-        isOpen={showQuickOpen}
-        onClose={() => setShowQuickOpen(false)}
-        files={Object.values(fileSystem.nodes).map(node => ({
-          id: node.id,
-          name: node.name,
-          type: node.type,
-          path: getNodePath(fileSystem, node.id),
-          content: node.content
-        }))}
-        onFileSelect={(fileId) => {
-          setActiveFileId(fileId)
-          const node = fileSystem.nodes[fileId]
-          if (node && node.type === 'file') {
-            setCode(node.content || '')
-          }
-        }}
         recentFiles={recentFiles}
       />
 
@@ -2017,7 +1982,7 @@ ignoredIssues={ignoredIssues}
       <BookmarksPanel
         isOpen={showBookmarksPanel}
         onClose={() => setShowBookmarksPanel(false)}
-        bookmarks={bookmarks.bookmarks}
+        bookmarks={bookmarks?.bookmarks || []}
         onNavigate={(bookmark) => {
           setActiveFileId(bookmark.fileId)
           const node = fileSystem.nodes[bookmark.fileId]
@@ -2034,19 +1999,19 @@ ignoredIssues={ignoredIssues}
           }
           setShowBookmarksPanel(false)
         }}
-        onRemove={(id) => bookmarks.removeBookmark(id)}
-        onClear={() => bookmarks.clearAllBookmarks()}
-        onUpdateNote={(id, note) => bookmarks.updateNote(id, note)}
+        onRemove={(id) => bookmarks?.removeBookmark?.(id)}
+        onClear={() => bookmarks?.clearAllBookmarks?.()}
+        onUpdateNote={(id, note) => bookmarks?.updateNote?.(id, note)}
       />
 
       {/* Linter Panel */}
       <LinterPanel
         isOpen={showLinterPanel}
         onClose={() => setShowLinterPanel(false)}
-        issues={linter.issues}
-        isAnalyzing={linter.isAnalyzing}
-        config={linter.config}
-        onConfigChange={linter.updateConfig}
+        issues={linter?.issues || []}
+        isAnalyzing={linter?.isAnalyzing || false}
+        config={linter?.config || { eslintEnabled: true, prettierEnabled: true, autoFixOnSave: true, showErrors: true, showWarnings: true, showInfo: true, showHints: true }}
+        onConfigChange={linter?.updateConfig || (() => {})}
         onFixIssue={(issue) => {
           if (issue.fix) {
             setCode(issue.fix)
@@ -2054,7 +2019,7 @@ ignoredIssues={ignoredIssues}
           }
         }}
         onFixAll={() => {
-          const fixedCode = linter.fixAllAuto()
+          const fixedCode = linter?.fixAllAuto?.()
           if (fixedCode) {
             setCode(fixedCode)
             handleCodeChange(fixedCode)
@@ -2125,10 +2090,10 @@ ignoredIssues={ignoredIssues}
       <TypeCheckerPanel
         isOpen={showTypeChecker}
         onClose={() => setShowTypeChecker(false)}
-        errors={typeChecker.errors}
-        isChecking={typeChecker.isChecking}
-        config={typeChecker.config}
-        onConfigChange={typeChecker.updateConfig}
+        errors={typeChecker?.errors || []}
+        isChecking={typeChecker?.isChecking || false}
+        config={typeChecker?.config || { strict: true, noImplicitAny: true, strictNullChecks: true, noUnusedLocals: true, noUnusedParameters: true }}
+        onConfigChange={typeChecker?.updateConfig || (() => {})}
         onNavigateToError={(error) => {
           if (editorRef.current) {
             editorRef.current.revealLineInCenter(error.line)
@@ -2164,25 +2129,25 @@ ignoredIssues={ignoredIssues}
       <StashManager
         isOpen={showStashManager}
         onClose={() => setShowStashManager(false)}
-        stashes={stashManager.stashes}
+        stashes={stashManager?.stashes || []}
         onCreateStash={(message) => {
-          stashManager.createStash(message, Object.values(fileSystem.nodes).filter(n => n.type === 'file').map(n => ({
+          stashManager?.createStash?.(message, Object.values(fileSystem.nodes).filter(n => n.type === 'file').map(n => ({
             fileId: n.id,
             fileName: n.name,
             content: n.content || ''
           })))
         }}
         onApplyStash={(id) => {
-          const stash = stashManager.stashes.find(s => s.id === id)
+          const stash = (stashManager?.stashes || []).find(s => s.id === id)
           if (stash && stash.files.length > 0) {
             const file = stash.files[0]
             setCode(file.content)
             handleCodeChange(file.content)
           }
-          stashManager.applyStash(id)
+          stashManager?.applyStash?.(id)
         }}
-        onDropStash={stashManager.dropStash}
-        onPopStash={stashManager.popStash}
+        onDropStash={stashManager?.dropStash || (() => {})}
+        onPopStash={stashManager?.popStash || (() => {})}
       />
 
       {/* AI PR Review */}
@@ -2299,11 +2264,11 @@ ignoredIssues={ignoredIssues}
       {showDebugger && (
         <div className="fixed right-0 top-[50px] bottom-0 w-80 z-40 shadow-xl">
           <DebuggerPanel
-            breakpoints={debugger_.breakpoints}
-            onAddBreakpoint={debugger_.addBreakpoint}
-            onRemoveBreakpoint={debugger_.removeBreakpoint}
-            onToggleBreakpoint={debugger_.toggleBreakpoint}
-            onClearBreakpoints={debugger_.clearBreakpoints}
+            breakpoints={debugger_?.breakpoints || []}
+            onAddBreakpoint={debugger_?.addBreakpoint || (() => {})}
+            onRemoveBreakpoint={debugger_?.removeBreakpoint || (() => {})}
+            onToggleBreakpoint={debugger_?.toggleBreakpoint || (() => {})}
+            onClearBreakpoints={debugger_?.clearBreakpoints || (() => {})}
             onNavigateToBreakpoint={(bp) => {
               setActiveFileId(bp.fileId)
               const node = fileSystem.nodes[bp.fileId]
@@ -2317,18 +2282,18 @@ ignoredIssues={ignoredIssues}
                 }, 100)
               }
             }}
-            isDebugging={debugger_.isDebugging}
-            isPaused={debugger_.isPaused}
-            onStartDebugging={debugger_.startDebugging}
-            onStopDebugging={debugger_.stopDebugging}
-            onContinue={debugger_.continueExecution}
-            onStepOver={debugger_.stepOver}
-            onStepInto={debugger_.stepInto}
-            onStepOut={debugger_.stepOut}
-            callStack={debugger_.callStack}
-            variables={debugger_.variables}
-            onStackFrameSelect={debugger_.setCurrentFrame}
-            currentFrame={debugger_.currentFrame}
+            isDebugging={debugger_?.isDebugging || false}
+            isPaused={debugger_?.isPaused || false}
+            onStartDebugging={debugger_?.startDebugging || (() => {})}
+            onStopDebugging={debugger_?.stopDebugging || (() => {})}
+            onContinue={debugger_?.continueExecution || (() => {})}
+            onStepOver={debugger_?.stepOver || (() => {})}
+            onStepInto={debugger_?.stepInto || (() => {})}
+            onStepOut={debugger_?.stepOut || (() => {})}
+            callStack={debugger_?.callStack || []}
+            variables={debugger_?.variables || []}
+            onStackFrameSelect={debugger_?.setCurrentFrame || (() => {})}
+            currentFrame={debugger_?.currentFrame || null}
           />
         </div>
       )}
