@@ -56,6 +56,12 @@ import { DebuggerPanel, useDebugger } from './debugger-panel'
 import { ZenMode, useZenMode } from './zen-mode'
 import { CustomLayouts, useCustomLayouts, PanelConfig } from './custom-layouts'
 import { PiPPreview, usePiPPreview } from './pip-preview'
+// Project management imports
+import { EnvManager } from './env-manager'
+import { NPMScriptRunner, useNPMScripts } from './npm-script-runner'
+import { DependencyViewer } from './dependency-viewer'
+import { ProjectTemplates } from './project-templates'
+import { FolderPlus, Terminal as TerminalIcon, FileJson, Key } from 'lucide-react'
 
 interface IDEInterfaceProps {
   projectId?: string
@@ -138,6 +144,35 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showNLToCode, setShowNLToCode] = useState(false)
   const [showDebugger, setShowDebugger] = useState(false)
   const [showCustomLayouts, setShowCustomLayouts] = useState(false)
+  // Project management state
+  const [showEnvManager, setShowEnvManager] = useState(false)
+  const [showScriptRunner, setShowScriptRunner] = useState(false)
+  const [showDependencyViewer, setShowDependencyViewer] = useState(false)
+  const [showProjectTemplates, setShowProjectTemplates] = useState(false)
+  const [envVariables, setEnvVariables] = useState<Array<{ key: string; value: string; isSecret: boolean }>>([
+    { key: 'DATABASE_URL', value: 'postgresql://...', isSecret: true },
+    { key: 'NEXT_PUBLIC_API_URL', value: 'https://api.example.com', isSecret: false }
+  ])
+  const [packageJson, setPackageJson] = useState<any>({
+    name: 'my-project',
+    version: '1.0.0',
+    scripts: {
+      dev: 'next dev',
+      build: 'next build',
+      start: 'next start',
+      lint: 'next lint'
+    },
+    dependencies: {
+      'next': '^15.0.0',
+      'react': '^18.3.0',
+      'react-dom': '^18.3.0'
+    },
+    devDependencies: {
+      'typescript': '^5.4.0',
+      '@types/react': '^18.3.0',
+      'tailwindcss': '^3.4.0'
+    }
+  })
   const analyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const editorRef = useRef<any>(null)
@@ -152,6 +187,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const debugger_ = useDebugger()
   const zenMode = useZenMode()
   const pipPreview = usePiPPreview()
+  const npmScripts = useNPMScripts(packageJson)
   const layoutConfig = useCustomLayouts({
     sidebar: true,
     sidebarWidth: 250,
@@ -1476,21 +1512,62 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   >
     <Layout className="h-4 w-4" />
   </Button>
-  {/* PiP Preview Button */}
+{/* PiP Preview Button */}
   <Button
-    onClick={() => pipPreview.openPiP('/api/preview')}
+  onClick={() => pipPreview.openPiP('/api/preview')}
+  size="sm"
+  variant="ghost"
+  className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+  pipPreview.isOpen ? 'text-blue-400 bg-blue-500/10' : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+  }`}
+  title="Picture-in-Picture Preview"
+  >
+  <PictureInPicture className="h-4 w-4" />
+  </Button>
+  <div className="w-px h-4 bg-[#3c3c3c] mx-1" />
+  {/* Project Management Buttons */}
+  <Button
+    onClick={() => setShowProjectTemplates(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="New Project from Template"
+  >
+    <FolderPlus className="h-4 w-4" />
+  </Button>
+  <Button
+    onClick={() => setShowEnvManager(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Environment Variables"
+  >
+    <Key className="h-4 w-4" />
+  </Button>
+  <Button
+    onClick={() => setShowScriptRunner(true)}
     size="sm"
     variant="ghost"
     className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
-      pipPreview.isOpen ? 'text-blue-400 bg-blue-500/10' : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+      npmScripts.runningScripts.size > 0 
+        ? 'text-green-400 bg-green-500/10' 
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
     }`}
-    title="Picture-in-Picture Preview"
+    title="NPM Scripts"
   >
-    <PictureInPicture className="h-4 w-4" />
-  </Button>
-  {typeChecker.errors.length > 0 && (
-      <span className="ml-1 text-[10px]">{typeChecker.errors.length}</span>
+    <TerminalIcon className="h-4 w-4" />
+    {npmScripts.runningScripts.size > 0 && (
+      <span className="ml-1 text-[10px]">{npmScripts.runningScripts.size}</span>
     )}
+  </Button>
+  <Button
+    onClick={() => setShowDependencyViewer(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Dependency Manager"
+  >
+    <FileJson className="h-4 w-4" />
   </Button>
   <Button
   onClick={saveFile}
@@ -2255,6 +2332,117 @@ ignoredIssues={ignoredIssues}
           />
         </div>
       )}
+
+      {/* Environment Variables Manager */}
+      <EnvManager
+        isOpen={showEnvManager}
+        onClose={() => setShowEnvManager(false)}
+        variables={envVariables}
+        onAdd={(variable) => {
+          setEnvVariables([...envVariables, variable])
+        }}
+        onUpdate={(index, variable) => {
+          const newVars = [...envVariables]
+          newVars[index] = variable
+          setEnvVariables(newVars)
+        }}
+        onDelete={(index) => {
+          setEnvVariables(envVariables.filter((_, i) => i !== index))
+        }}
+        onImport={(vars) => {
+          setEnvVariables([...envVariables, ...vars])
+        }}
+      />
+
+      {/* NPM Script Runner */}
+      <NPMScriptRunner
+        isOpen={showScriptRunner}
+        onClose={() => setShowScriptRunner(false)}
+        scripts={npmScripts.scripts}
+        runningScripts={npmScripts.runningScripts}
+        scriptOutputs={npmScripts.scriptOutputs}
+        onRunScript={(name) => npmScripts.runScript(name, (output) => {
+          // Script completed
+          console.log('[v0] Script completed:', name, output)
+        })}
+        onStopScript={npmScripts.stopScript}
+        onAddScript={(name, command) => {
+          setPackageJson({
+            ...packageJson,
+            scripts: { ...packageJson.scripts, [name]: command }
+          })
+        }}
+        onRemoveScript={(name) => {
+          const { [name]: _, ...rest } = packageJson.scripts
+          setPackageJson({ ...packageJson, scripts: rest })
+        }}
+      />
+
+      {/* Dependency Viewer */}
+      <DependencyViewer
+        isOpen={showDependencyViewer}
+        onClose={() => setShowDependencyViewer(false)}
+        packageJson={packageJson}
+        onUpdateDependency={(name, version) => {
+          const isDev = packageJson.devDependencies?.[name]
+          if (isDev) {
+            setPackageJson({
+              ...packageJson,
+              devDependencies: { ...packageJson.devDependencies, [name]: version }
+            })
+          } else {
+            setPackageJson({
+              ...packageJson,
+              dependencies: { ...packageJson.dependencies, [name]: version }
+            })
+          }
+        }}
+        onRemoveDependency={(name, type) => {
+          if (type === 'devDependency') {
+            const { [name]: _, ...rest } = packageJson.devDependencies
+            setPackageJson({ ...packageJson, devDependencies: rest })
+          } else {
+            const { [name]: _, ...rest } = packageJson.dependencies
+            setPackageJson({ ...packageJson, dependencies: rest })
+          }
+        }}
+        onAddDependency={(name, version, type) => {
+          if (type === 'devDependency') {
+            setPackageJson({
+              ...packageJson,
+              devDependencies: { ...packageJson.devDependencies, [name]: version }
+            })
+          } else {
+            setPackageJson({
+              ...packageJson,
+              dependencies: { ...packageJson.dependencies, [name]: version }
+            })
+          }
+        }}
+      />
+
+      {/* Project Templates */}
+      <ProjectTemplates
+        isOpen={showProjectTemplates}
+        onClose={() => setShowProjectTemplates(false)}
+        onSelectTemplate={(template, projectName) => {
+          // Create new project from template
+          console.log('[v0] Creating project:', projectName, 'from template:', template.name)
+          // Add template files to file system
+          template.files.forEach(file => {
+            console.log('[v0] Would create file:', file.path)
+          })
+          // Update package.json
+          if (template.dependencies || template.devDependencies) {
+            setPackageJson({
+              ...packageJson,
+              name: projectName,
+              dependencies: { ...packageJson.dependencies, ...template.dependencies },
+              devDependencies: { ...packageJson.devDependencies, ...template.devDependencies }
+            })
+          }
+        }}
+      />
     </div>
   )
 }

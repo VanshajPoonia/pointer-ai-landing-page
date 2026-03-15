@@ -37,6 +37,56 @@ interface NpmScript {
   isFavorite: boolean
 }
 
+// Hook for managing NPM scripts state
+export function useNPMScripts(packageJson?: { scripts?: Record<string, string> }) {
+  const [runningScripts, setRunningScripts] = useState<Set<string>>(new Set())
+  const [scriptOutputs, setScriptOutputs] = useState<Record<string, string[]>>({})
+
+  const scripts = Object.entries(packageJson?.scripts || {}).map(([name, command]) => ({
+    name,
+    command
+  }))
+
+  const runScript = (name: string, onComplete?: (output: string[]) => void) => {
+    setRunningScripts(prev => new Set([...prev, name]))
+    setScriptOutputs(prev => ({ ...prev, [name]: [`Running npm run ${name}...`] }))
+    
+    // Simulate script execution
+    setTimeout(() => {
+      setScriptOutputs(prev => ({
+        ...prev,
+        [name]: [...(prev[name] || []), 'Script completed successfully.']
+      }))
+      setRunningScripts(prev => {
+        const next = new Set(prev)
+        next.delete(name)
+        return next
+      })
+      onComplete?.(scriptOutputs[name] || [])
+    }, 2000)
+  }
+
+  const stopScript = (name: string) => {
+    setRunningScripts(prev => {
+      const next = new Set(prev)
+      next.delete(name)
+      return next
+    })
+    setScriptOutputs(prev => ({
+      ...prev,
+      [name]: [...(prev[name] || []), 'Script terminated.']
+    }))
+  }
+
+  return {
+    scripts,
+    runningScripts,
+    scriptOutputs,
+    runScript,
+    stopScript
+  }
+}
+
 interface ScriptRun {
   id: string
   scriptName: string
@@ -49,55 +99,47 @@ interface ScriptRun {
 interface NpmScriptRunnerProps {
   isOpen: boolean
   onClose: () => void
-  packageJson?: {
-    name?: string
-    scripts?: Record<string, string>
-  }
-  onRunScript?: (scriptName: string) => void
+  scripts: { name: string; command: string }[]
+  runningScripts: Set<string>
+  scriptOutputs: Record<string, string[]>
+  onRunScript: (name: string) => void
+  onStopScript: (name: string) => void
+  onAddScript?: (name: string, command: string) => void
+  onRemoveScript?: (name: string) => void
 }
 
-export function NpmScriptRunner({
+export function NPMScriptRunner({
   isOpen,
   onClose,
-  packageJson,
-  onRunScript
+  scripts: propsScripts,
+  runningScripts,
+  scriptOutputs,
+  onRunScript,
+  onStopScript,
+  onAddScript,
+  onRemoveScript
 }: NpmScriptRunnerProps) {
   const [scripts, setScripts] = useState<NpmScript[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [runningScripts, setRunningScripts] = useState<Record<string, ScriptRun>>({})
+  const [localRunningScripts, setLocalRunningScripts] = useState<Record<string, ScriptRun>>({})
   const [history, setHistory] = useState<ScriptRun[]>([])
   const [expandedOutput, setExpandedOutput] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const outputRef = useRef<HTMLDivElement>(null)
 
-  // Initialize scripts from package.json
+  // Initialize scripts from props
   useEffect(() => {
-    const defaultScripts: Record<string, string> = packageJson?.scripts || {
-      'dev': 'next dev',
-      'build': 'next build',
-      'start': 'next start',
-      'lint': 'next lint',
-      'test': 'jest',
-      'test:watch': 'jest --watch',
-      'test:coverage': 'jest --coverage',
-      'format': 'prettier --write .',
-      'typecheck': 'tsc --noEmit',
-      'db:migrate': 'prisma migrate dev',
-      'db:seed': 'prisma db seed',
-      'db:studio': 'prisma studio'
-    }
-
     const favorites = ['dev', 'build', 'lint', 'test']
     
     setScripts(
-      Object.entries(defaultScripts).map(([name, command]) => ({
+      propsScripts.map(({ name, command }) => ({
         name,
         command,
         description: getScriptDescription(name),
         isFavorite: favorites.includes(name)
       }))
     )
-  }, [packageJson])
+  }, [propsScripts])
 
   const getScriptDescription = (name: string): string => {
     const descriptions: Record<string, string> = {
@@ -117,127 +159,53 @@ export function NpmScriptRunner({
     return descriptions[name] || ''
   }
 
-  const runScript = (scriptName: string) => {
+  const handleRunScript = (scriptName: string) => {
     const runId = Date.now().toString()
     const run: ScriptRun = {
       id: runId,
       scriptName,
       startTime: new Date(),
       status: 'running',
-      output: []
+      output: scriptOutputs[scriptName] || []
     }
 
-    setRunningScripts(prev => ({ ...prev, [scriptName]: run }))
+    setLocalRunningScripts(prev => ({ ...prev, [scriptName]: run }))
     setExpandedOutput(scriptName)
-
-    // Simulate script execution with output
-    const outputs = [
-      `> ${packageJson?.name || 'project'}@1.0.0 ${scriptName}`,
-      `> ${scripts.find(s => s.name === scriptName)?.command || scriptName}`,
-      '',
-    ]
-
-    const scriptOutputs: Record<string, string[]> = {
-      'dev': [
-        '  - Local:        http://localhost:3000',
-        '  - Network:      http://192.168.1.100:3000',
-        '',
-        '  Ready in 1.2s'
-      ],
-      'build': [
-        '   Creating an optimized production build...',
-        '   Compiled successfully.',
-        '',
-        '   Route (app)                              Size     First Load JS',
-        '   + First Load JS shared by all           87.2 kB',
-        '     /                                      5.3 kB         92.5 kB',
-        '     /_not-found                            871 B          88.1 kB',
-        '   + First Load JS shared by all           87.2 kB',
-        '',
-        '   Build completed in 12.4s'
-      ],
-      'lint': [
-        '  ./app/page.tsx',
-        '    15:7  Warning: React Hook useEffect has a missing dependency  react-hooks/exhaustive-deps',
-        '',
-        '  1 warning found.',
-        '  Lint completed.'
-      ],
-      'test': [
-        ' PASS  __tests__/components/Button.test.tsx',
-        ' PASS  __tests__/utils/helpers.test.ts',
-        ' PASS  __tests__/hooks/useAuth.test.ts',
-        '',
-        'Test Suites: 3 passed, 3 total',
-        'Tests:       12 passed, 12 total',
-        'Snapshots:   0 total',
-        'Time:        2.341s'
-      ],
-      'format': [
-        'Checking formatting...',
-        '  app/page.tsx',
-        '  components/ui/button.tsx',
-        '  lib/utils.ts',
-        '',
-        'All files formatted successfully.'
-      ],
-      'typecheck': [
-        'Checking TypeScript...',
-        '',
-        'Found 0 errors.'
-      ]
-    }
-
-    const specificOutputs = scriptOutputs[scriptName] || [
-      'Running script...',
-      '',
-      'Script completed successfully.'
-    ]
-
-    outputs.push(...specificOutputs)
-
-    let outputIndex = 0
-    const interval = setInterval(() => {
-      if (outputIndex < outputs.length) {
-        setRunningScripts(prev => ({
-          ...prev,
-          [scriptName]: {
-            ...prev[scriptName],
-            output: [...prev[scriptName].output, outputs[outputIndex]]
-          }
-        }))
-        outputIndex++
-      } else {
-        clearInterval(interval)
-        const isError = scriptName === 'lint' && outputs.some(o => o.includes('Warning'))
-        
-        setRunningScripts(prev => {
-          const updatedRun = {
-            ...prev[scriptName],
-            endTime: new Date(),
-            status: isError ? 'success' : 'success' as const
-          }
-          setHistory(h => [updatedRun, ...h].slice(0, 10))
-          return { ...prev, [scriptName]: updatedRun }
-        })
-      }
-    }, 100)
-
-    onRunScript?.(scriptName)
+    onRunScript(scriptName)
   }
 
-  const stopScript = (scriptName: string) => {
-    setRunningScripts(prev => {
+  const handleStopScript = (scriptName: string) => {
+    setLocalRunningScripts(prev => {
       const updatedRun = {
         ...prev[scriptName],
         endTime: new Date(),
-        status: 'error' as const,
-        output: [...prev[scriptName].output, '', 'Script terminated by user.']
+        status: 'error' as const
       }
       setHistory(h => [updatedRun, ...h].slice(0, 10))
       return { ...prev, [scriptName]: updatedRun }
     })
+    onStopScript(scriptName)
   }
+
+  // Update local running scripts when props change
+  useEffect(() => {
+    setLocalRunningScripts(prev => {
+      const updated = { ...prev }
+      // Update status based on runningScripts set
+      for (const name of Object.keys(updated)) {
+        if (!runningScripts.has(name) && updated[name]?.status === 'running') {
+          updated[name] = {
+            ...updated[name],
+            endTime: new Date(),
+            status: 'success',
+            output: scriptOutputs[name] || updated[name].output
+          }
+          setHistory(h => [updated[name], ...h].slice(0, 10))
+        }
+      }
+      return updated
+    })
+  }, [runningScripts, scriptOutputs])
 
   const toggleFavorite = (scriptName: string) => {
     setScripts(prev => prev.map(s => 
@@ -317,10 +285,11 @@ export function NpmScriptRunner({
                       <ScriptItem
                         key={script.name}
                         script={script}
-                        run={runningScripts[script.name]}
+                        run={localRunningScripts[script.name]}
+                        isRunning={runningScripts.has(script.name)}
                         isExpanded={expandedOutput === script.name}
-                        onRun={() => runScript(script.name)}
-                        onStop={() => stopScript(script.name)}
+                        onRun={() => handleRunScript(script.name)}
+                        onStop={() => handleStopScript(script.name)}
                         onToggleFavorite={() => toggleFavorite(script.name)}
                         onExpand={() => setExpandedOutput(expandedOutput === script.name ? null : script.name)}
                         onCopy={() => copyCommand(script.name)}
@@ -341,10 +310,11 @@ export function NpmScriptRunner({
                     <ScriptItem
                       key={script.name}
                       script={script}
-                      run={runningScripts[script.name]}
+                      run={localRunningScripts[script.name]}
+                      isRunning={runningScripts.has(script.name)}
                       isExpanded={expandedOutput === script.name}
-                      onRun={() => runScript(script.name)}
-                      onStop={() => stopScript(script.name)}
+                      onRun={() => handleRunScript(script.name)}
+                      onStop={() => handleStopScript(script.name)}
                       onToggleFavorite={() => toggleFavorite(script.name)}
                       onExpand={() => setExpandedOutput(expandedOutput === script.name ? null : script.name)}
                       onCopy={() => copyCommand(script.name)}
@@ -399,6 +369,7 @@ export function NpmScriptRunner({
 function ScriptItem({
   script,
   run,
+  isRunning,
   isExpanded,
   onRun,
   onStop,
@@ -409,6 +380,7 @@ function ScriptItem({
 }: {
   script: NpmScript
   run?: ScriptRun
+  isRunning: boolean
   isExpanded: boolean
   onRun: () => void
   onStop: () => void
@@ -416,8 +388,7 @@ function ScriptItem({
   onExpand: () => void
   onCopy: () => void
   formatDuration: (start: Date, end?: Date) => string
-}) {
-  const isRunning = run?.status === 'running'
+})
 
   return (
     <div className="bg-[#252526] rounded-lg border border-[#3c3c3c] overflow-hidden">
