@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Maximize2 } from 'lucide-react'
 
@@ -79,7 +79,5 @@ export function useZenMode() {
     toggleZenMode
   }
 }
-
-import { useState } from 'react'
 
 export default ZenMode

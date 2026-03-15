@@ -98,9 +98,12 @@ export function TypeCheckerPanel({
   errors,
   currentFile,
   onNavigateToError,
+  onApplyFix,
   onApplyQuickFix,
   onRefresh,
-  isChecking
+  isChecking,
+  config,
+  onConfigChange
 }: TypeCheckerPanelProps) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
   const [filterSeverity, setFilterSeverity] = useState<TypeErrorSeverity | 'all'>('all')

@@ -2130,24 +2130,15 @@ ignoredIssues={ignoredIssues}
         isOpen={showStashManager}
         onClose={() => setShowStashManager(false)}
         stashes={stashManager?.stashes || []}
+        currentBranch="main"
         onCreateStash={(message) => {
-          stashManager?.createStash?.(message, Object.values(fileSystem.nodes).filter(n => n.type === 'file').map(n => ({
-            fileId: n.id,
-            fileName: n.name,
-            content: n.content || ''
-          })))
+          stashManager?.createStash?.(message)
         }}
-        onApplyStash={(id) => {
-          const stash = (stashManager?.stashes || []).find(s => s.id === id)
-          if (stash && stash.files.length > 0) {
-            const file = stash.files[0]
-            setCode(file.content)
-            handleCodeChange(file.content)
-          }
-          stashManager?.applyStash?.(id)
+        onApplyStash={(id, drop) => {
+          stashManager?.applyStash?.(id, drop)
         }}
         onDropStash={stashManager?.dropStash || (() => {})}
-        onPopStash={stashManager?.popStash || (() => {})}
+        onClearAll={() => stashManager?.clearAll?.()}
       />
 
       {/* AI PR Review */}
@@ -2232,8 +2223,8 @@ ignoredIssues={ignoredIssues}
       <CustomLayouts
         isOpen={showCustomLayouts}
         onClose={() => setShowCustomLayouts(false)}
-        currentConfig={layoutConfig.config}
-        onApplyLayout={layoutConfig.applyLayout}
+        currentConfig={layoutConfig?.config || { sidebar: true, sidebarWidth: 250, terminal: true, terminalHeight: 200, preview: true, previewWidth: 400, aiPanel: false, aiPanelWidth: 350, outputPanel: true, debugPanel: false }}
+        onApplyLayout={layoutConfig?.applyLayout || (() => {})}
         onSaveLayout={(name, config) => {
           console.log('[v0] Saved layout:', name, config)
         }}
@@ -2241,16 +2232,16 @@ ignoredIssues={ignoredIssues}
 
       {/* PiP Preview */}
       <PiPPreview
-        isOpen={pipPreview.isOpen}
-        onClose={pipPreview.closePiP}
-        previewUrl={pipPreview.previewUrl || '/api/preview'}
+        isOpen={pipPreview?.isOpen || false}
+        onClose={pipPreview?.closePiP || (() => {})}
+        previewUrl={pipPreview?.previewUrl || '/api/preview'}
         onRefresh={() => {
           // Trigger preview refresh
         }}
       />
 
       {/* Zen Mode */}
-      <ZenMode isActive={zenMode.isZenMode} onExit={zenMode.exitZenMode}>
+      <ZenMode isActive={zenMode?.isZenMode || false} onExit={zenMode?.exitZenMode || (() => {})}>
         <CodeEditor
           code={code}
           onChange={handleCodeChange}
@@ -2293,7 +2284,7 @@ ignoredIssues={ignoredIssues}
             callStack={debugger_?.callStack || []}
             variables={debugger_?.variables || []}
             onStackFrameSelect={debugger_?.setCurrentFrame || (() => {})}
-            currentFrame={debugger_?.currentFrame || null}
+            currentFrame={debugger_?.currentFrame}
           />
         </div>
       )}
@@ -2323,14 +2314,14 @@ ignoredIssues={ignoredIssues}
       <NPMScriptRunner
         isOpen={showScriptRunner}
         onClose={() => setShowScriptRunner(false)}
-        scripts={npmScripts.scripts}
-        runningScripts={npmScripts.runningScripts}
-        scriptOutputs={npmScripts.scriptOutputs}
-        onRunScript={(name) => npmScripts.runScript(name, (output) => {
+        scripts={npmScripts?.scripts || []}
+        runningScripts={npmScripts?.runningScripts || new Set()}
+        scriptOutputs={npmScripts?.scriptOutputs || {}}
+        onRunScript={(name) => npmScripts?.runScript?.(name, (output) => {
           // Script completed
           console.log('[v0] Script completed:', name, output)
         })}
-        onStopScript={npmScripts.stopScript}
+        onStopScript={npmScripts?.stopScript || (() => {})}
         onAddScript={(name, command) => {
           setPackageJson({
             ...packageJson,
