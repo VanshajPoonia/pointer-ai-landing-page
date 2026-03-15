@@ -57,7 +57,7 @@ interface LinterPanelProps {
   onFixIssue: (issue: LintIssue) => void
   onFixAll: () => void
   onNavigateToIssue: (issue: LintIssue) => void
-  onRefresh: () => void
+  onRefresh?: () => void
   isAnalyzing: boolean
   currentFile?: string
 }
@@ -551,13 +551,17 @@ export function useLinter(code: string, language: string) {
     setIssues(prev => prev.filter(i => !i.fix))
   }, [])
 
-  return {
-    issues,
-    isAnalyzing,
-    config,
-    setConfig,
-    analyze,
-    fixIssue,
-    fixAll
+return {
+  issues,
+  isAnalyzing,
+  config,
+  updateConfig: setConfig,
+  analyze,
+  fixIssue,
+  fixAll,
+  fixAllAuto: () => {
+    // Return code with all auto-fixable issues fixed
+    return null // Would return fixed code
+  }
   }
 }

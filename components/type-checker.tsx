@@ -54,9 +54,12 @@ interface TypeCheckerPanelProps {
   errors: TypeScriptError[]
   currentFile?: string
   onNavigateToError: (error: TypeScriptError) => void
-  onApplyQuickFix: (error: TypeScriptError, fix: TypeErrorQuickFix) => void
-  onRefresh: () => void
+  onApplyFix?: (error: TypeScriptError) => void
+  onApplyQuickFix?: (error: TypeScriptError, fix: TypeErrorQuickFix) => void
+  onRefresh?: () => void
   isChecking: boolean
+  config?: TypeCheckerConfig
+  onConfigChange?: (config: TypeCheckerConfig) => void
 }
 
 // Get icon for severity
@@ -428,9 +431,24 @@ export function TypeCheckerPanel({
 }
 
 // Hook to simulate TypeScript checking
+export interface TypeCheckerConfig {
+  strict: boolean
+  noImplicitAny: boolean
+  strictNullChecks: boolean
+  noUnusedLocals: boolean
+  noUnusedParameters: boolean
+}
+
 export function useTypeChecker(code: string, language: string) {
   const [errors, setErrors] = useState<TypeScriptError[]>([])
   const [isChecking, setIsChecking] = useState(false)
+  const [config, setConfig] = useState<TypeCheckerConfig>({
+    strict: true,
+    noImplicitAny: true,
+    strictNullChecks: true,
+    noUnusedLocals: true,
+    noUnusedParameters: true
+  })
 
   const checkTypes = useCallback(() => {
     if (!code || !language.includes('typescript')) {
@@ -554,10 +572,12 @@ export function useTypeChecker(code: string, language: string) {
     setErrors(prev => prev.filter(e => e.id !== error.id))
   }, [])
 
-  return {
-    errors,
-    isChecking,
-    checkTypes,
-    applyQuickFix
+return {
+  errors,
+  isChecking,
+  config,
+  updateConfig: setConfig,
+  checkTypes,
+  applyQuickFix
   }
 }

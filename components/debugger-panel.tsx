@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { 
   Play, 
   Pause, 
-  StepInto, 
-  StepOver, 
-  StepOut, 
+  SkipForward,
+  ArrowDownToLine,
+  ArrowUpFromLine,
   RotateCcw,
   Circle,
   CircleDot,
@@ -24,6 +24,11 @@ import {
   Trash2,
   Send
 } from 'lucide-react'
+
+// Alias icons for debugger actions (Step Over, Step Into, Step Out)
+const StepOver = SkipForward
+const StepInto = ArrowDownToLine
+const StepOut = ArrowUpFromLine
 
 // Types
 export interface Breakpoint {
