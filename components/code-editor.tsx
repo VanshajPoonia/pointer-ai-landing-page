@@ -41,6 +41,7 @@ interface CodeEditorProps {
   issues?: CodeIssue[]
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void
   onCursorChange?: (position: CursorPosition, selection?: Selection) => void
+  onSelectionChange?: (selectedText: string) => void
   ghostText?: GhostTextSuggestion | null
   onAcceptGhostText?: () => string
   onDismissGhostText?: () => void
@@ -53,6 +54,7 @@ export function CodeEditor({
   issues = [], 
   onEditorReady, 
   onCursorChange,
+  onSelectionChange,
   ghostText,
   onAcceptGhostText,
   onDismissGhostText,
@@ -117,6 +119,22 @@ export function CodeEditor({
         onDismissGhostText()
       }
     })
+
+    // Listen for selection changes to capture selected text
+    if (onSelectionChange) {
+      editor.onDidChangeCursorSelection((e) => {
+        const selection = e.selection
+        if (!selection.isEmpty()) {
+          const model = editor.getModel()
+          if (model) {
+            const selectedText = model.getValueInRange(selection)
+            onSelectionChange(selectedText)
+          }
+        } else {
+          onSelectionChange('')
+        }
+      })
+    }
   }
 
   // Render ghost text (AI suggestion) as inline decoration

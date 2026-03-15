@@ -11,7 +11,7 @@ import { OutputPanel } from './output-panel'
 import { IDEHeader } from './ide-header'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from './ui/button'
-import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning } from 'lucide-react'
+import { Play, Save, FileCode, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Eye, EyeOff, GitBranch, Settings, MessageSquareWarning, Zap, Search, Keyboard, Command, GitCompare } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,11 @@ import { SourceControlPanel } from './source-control-panel'
 import { LivePreviewPanel } from './live-preview-panel'
 import { SnippetsPanel } from './snippets-panel'
 import { DeploymentPanel } from './deployment-panel'
+import { AIToolsPanel } from './ai-tools-panel'
+import { CommandPalette, KeyboardShortcutsPanel, defaultShortcuts, useKeyboardShortcuts } from './command-palette'
+import { SettingsPanel, defaultSettings, EditorSettings } from './settings-panel'
+import { QuickOpen, GlobalSearch } from './file-search'
+import { DiffViewer } from './diff-viewer'
 import { useAIAutocomplete } from '@/hooks/use-ai-autocomplete'
 import { CodeIssue } from './code-editor'
 import { FileNode, FileSystemState, createDefaultFileSystem, getNodePath, getLanguageTemplate } from '@/lib/file-system'
@@ -66,6 +71,18 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
   const [showLivePreview, setShowLivePreview] = useState(false)
   const [showSnippetsPanel, setShowSnippetsPanel] = useState(false)
   const [showDeploymentPanel, setShowDeploymentPanel] = useState(false)
+  const [showAIToolsPanel, setShowAIToolsPanel] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false)
+  const [showQuickOpen, setShowQuickOpen] = useState(false)
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false)
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>(defaultSettings)
+  const [recentFiles, setRecentFiles] = useState<string[]>([])
+  const [showDiffViewer, setShowDiffViewer] = useState(false)
+  const [diffOriginalCode, setDiffOriginalCode] = useState('')
+  const [savedVersions, setSavedVersions] = useState<Record<string, string>>({})
+  const [selectedCode, setSelectedCode] = useState('')
   const [aiAutocompleteEnabled, setAiAutocompleteEnabled] = useState(true)
   const [activeLeftPanel, setActiveLeftPanel] = useState<'files' | 'git'>('files')
   const [codeIssues, setCodeIssues] = useState<CodeIssue[]>([])
@@ -85,6 +102,24 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
 
   // Get current file's database ID for collaboration
   const activeFileDbId = activeFileId ? fileSystem.nodes[activeFileId]?.dbId : undefined
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    'cmd+p': () => setShowQuickOpen(true),
+    'cmd+shift+p': () => setShowCommandPalette(true),
+    'cmd+shift+f': () => setShowGlobalSearch(true),
+    'cmd+s': () => handleSave(),
+    'cmd+shift+a': () => setShowAIPanel(!showAIPanel),
+    'cmd+,': () => setShowSettingsPanel(true),
+    'cmd+k': () => setShowKeyboardShortcuts(true),
+  })
+
+  // Track recent files
+  useEffect(() => {
+    if (activeFileId && !recentFiles.includes(activeFileId)) {
+      setRecentFiles(prev => [activeFileId, ...prev.slice(0, 9)])
+    }
+  }, [activeFileId])
 
   // AI Autocomplete hook
   const {
@@ -1093,6 +1128,21 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
       <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
     )}
   </Button>
+  {/* AI Tools Button */}
+  <Button
+    onClick={() => setShowAIToolsPanel(!showAIToolsPanel)}
+    size="sm"
+    variant="ghost"
+    className={`h-[26px] px-3 text-[12px] rounded-[3px] ${
+      showAIToolsPanel
+        ? 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-400'
+        : 'text-[#cccccc] hover:bg-[#3c3c3c]'
+    }`}
+    title="AI Tools: Explain, Document, Fix Bugs, Generate Tests"
+  >
+    <Zap className="mr-1.5 h-4 w-4" />
+    AI Tools
+  </Button>
   {/* AI Chat Button */}
   <Button
     onClick={() => setShowAIPanel(!showAIPanel)}
@@ -1105,10 +1155,58 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     }`}
   >
     <MessageSquare className="mr-1.5 h-4 w-4" />
-    AI Chat
+  AI Chat
   </Button>
-              <Button
-                onClick={saveFile}
+  {/* Search Button */}
+  <Button
+    onClick={() => setShowQuickOpen(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Quick Open (Cmd+P)"
+  >
+    <Search className="mr-1.5 h-4 w-4" />
+    Search
+  </Button>
+  {/* Command Palette Button */}
+  <Button
+    onClick={() => setShowCommandPalette(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Command Palette (Cmd+Shift+P)"
+  >
+    <Command className="mr-1.5 h-4 w-4" />
+  </Button>
+  {/* Settings Button */}
+  <Button
+    onClick={() => setShowSettingsPanel(true)}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Settings (Cmd+,)"
+  >
+    <Settings className="h-4 w-4" />
+  </Button>
+  {/* Diff Viewer Button */}
+  <Button
+    onClick={() => {
+      // Store current code as original if we haven't saved a version
+      if (activeFileId && !savedVersions[activeFileId]) {
+        setSavedVersions(prev => ({ ...prev, [activeFileId]: code }))
+      }
+      setDiffOriginalCode(savedVersions[activeFileId] || code)
+      setShowDiffViewer(true)
+    }}
+    size="sm"
+    variant="ghost"
+    className="h-[26px] px-3 text-[12px] rounded-[3px] text-[#cccccc] hover:bg-[#3c3c3c]"
+    title="Compare Changes"
+  >
+    <GitCompare className="h-4 w-4" />
+  </Button>
+  <Button
+    onClick={saveFile}
                 size="sm"
                 variant="ghost"
                 className="h-[26px] px-3 text-[#cccccc] hover:bg-[#3c3c3c] text-[12px] rounded-[3px]"
@@ -1175,6 +1273,7 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
     return suggestion || ''
   }}
   onDismissGhostText={dismissSuggestion}
+  onSelectionChange={(text) => setSelectedCode(text)}
   />
   {/* Collaboration Cursors */}
   {collaborationEnabled && collaborators.length > 0 && (
@@ -1246,6 +1345,27 @@ export function IDEInterface({ projectId }: IDEInterfaceProps) {
                 onClose={() => setShowDeploymentPanel(false)}
               />
             )}
+            {/* AI Tools Panel */}
+            <AIToolsPanel
+              isOpen={showAIToolsPanel}
+              onClose={() => setShowAIToolsPanel(false)}
+              selectedCode={selectedCode || code}
+              language={language}
+              onApplyFix={(fixedCode) => {
+                setCode(fixedCode)
+                handleCodeChange(fixedCode)
+              }}
+              onInsertTests={(testCode) => {
+                // Create a new test file
+                const testFileName = activeFileId 
+                  ? `${fileSystem.nodes[activeFileId]?.name?.replace(/\.\w+$/, '')}.test.${language === 'python' ? 'py' : 'ts'}`
+                  : `tests.${language === 'python' ? 'py' : 'ts'}`
+                // Insert at cursor or append to file
+                const newCode = code + '\n\n// Tests\n' + testCode
+                setCode(newCode)
+                handleCodeChange(newCode)
+              }}
+            />
           </div>
 
 {/* Issues Panel */}
@@ -1281,6 +1401,96 @@ ignoredIssues={ignoredIssues}
           </div>
         </div>
       </div>
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        actions={[
+          { id: 'quick-open', name: 'Quick Open', shortcut: ['Cmd', 'P'], icon: <Search className="h-4 w-4" />, category: 'navigation', action: () => setShowQuickOpen(true) },
+          { id: 'global-search', name: 'Search in Files', shortcut: ['Cmd', 'Shift', 'F'], icon: <Search className="h-4 w-4" />, category: 'navigation', action: () => setShowGlobalSearch(true) },
+          { id: 'save', name: 'Save File', shortcut: ['Cmd', 'S'], icon: <Save className="h-4 w-4" />, category: 'file', action: () => saveFile() },
+          { id: 'run', name: 'Run Code', shortcut: ['Cmd', 'Enter'], icon: <Play className="h-4 w-4" />, category: 'file', action: () => runCode() },
+          { id: 'toggle-ai', name: 'Toggle AI Chat', shortcut: ['Cmd', 'Shift', 'A'], icon: <MessageSquare className="h-4 w-4" />, category: 'ai', action: () => setShowAIPanel(!showAIPanel) },
+          { id: 'ai-tools', name: 'AI Tools', icon: <Zap className="h-4 w-4" />, category: 'ai', action: () => setShowAIToolsPanel(true) },
+          { id: 'snippets', name: 'Code Snippets', icon: <FileCode className="h-4 w-4" />, category: 'ai', action: () => setShowSnippetsPanel(true) },
+          { id: 'deploy', name: 'Deploy Project', icon: <Play className="h-4 w-4" />, category: 'file', action: () => setShowDeploymentPanel(true) },
+          { id: 'settings', name: 'Settings', shortcut: ['Cmd', ','], icon: <Settings className="h-4 w-4" />, category: 'settings', action: () => setShowSettingsPanel(true) },
+          { id: 'shortcuts', name: 'Keyboard Shortcuts', shortcut: ['Cmd', 'K'], icon: <Keyboard className="h-4 w-4" />, category: 'settings', action: () => setShowKeyboardShortcuts(true) },
+          { id: 'toggle-preview', name: 'Toggle Live Preview', icon: <Eye className="h-4 w-4" />, category: 'view', action: () => setShowLivePreview(!showLivePreview) },
+{ id: 'toggle-issues', name: 'Toggle Issues Panel', icon: <AlertCircle className="h-4 w-4" />, category: 'view', action: () => setShowIssuesPanel(!showIssuesPanel) },
+          { id: 'compare-changes', name: 'Compare Changes (Diff)', icon: <GitCompare className="h-4 w-4" />, category: 'view', action: () => { setDiffOriginalCode(savedVersions[activeFileId || ''] || code); setShowDiffViewer(true) } },
+        ]}
+      />
+
+      {/* Keyboard Shortcuts Panel */}
+      <KeyboardShortcutsPanel
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
+        shortcuts={defaultShortcuts}
+      />
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        isOpen={showSettingsPanel}
+        onClose={() => setShowSettingsPanel(false)}
+        settings={editorSettings}
+        onSettingsChange={setEditorSettings}
+      />
+
+      {/* Quick Open (File Search) */}
+      <QuickOpen
+        isOpen={showQuickOpen}
+        onClose={() => setShowQuickOpen(false)}
+        files={Object.values(fileSystem.nodes).map(node => ({
+          id: node.id,
+          name: node.name,
+          type: node.type,
+          path: getNodePath(fileSystem, node.id),
+          content: node.content
+        }))}
+        onFileSelect={(fileId) => {
+          setActiveFileId(fileId)
+          const node = fileSystem.nodes[fileId]
+          if (node && node.type === 'file') {
+            setCode(node.content || '')
+          }
+        }}
+        recentFiles={recentFiles}
+      />
+
+      {/* Global Search */}
+      <GlobalSearch
+        isOpen={showGlobalSearch}
+        onClose={() => setShowGlobalSearch(false)}
+        files={Object.values(fileSystem.nodes).map(node => ({
+          id: node.id,
+          name: node.name,
+          type: node.type,
+          path: getNodePath(fileSystem, node.id),
+          content: node.content
+        }))}
+        onResultSelect={(fileId, line) => {
+          setActiveFileId(fileId)
+          const node = fileSystem.nodes[fileId]
+          if (node && node.type === 'file') {
+            setCode(node.content || '')
+          }
+          // Jump to line (would need editor integration)
+          setShowGlobalSearch(false)
+        }}
+      />
+
+      {/* Diff Viewer */}
+      <DiffViewer
+        isOpen={showDiffViewer}
+        onClose={() => setShowDiffViewer(false)}
+        originalCode={diffOriginalCode}
+        modifiedCode={code}
+        originalTitle={activeFileId ? `${fileSystem.nodes[activeFileId]?.name} (saved)` : 'Original'}
+        modifiedTitle={activeFileId ? `${fileSystem.nodes[activeFileId]?.name} (current)` : 'Modified'}
+        language={language}
+      />
     </div>
   )
 }

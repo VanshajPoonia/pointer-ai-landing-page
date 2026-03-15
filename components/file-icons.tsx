@@ -195,6 +195,19 @@ export function FileIcon({ filename, className = '', size = 16 }: FileIconProps)
   )
 }
 
+// Helper function to get file icon component based on filename
+export function getFileIcon(filename: string) {
+  const ext = filename.split('.').pop()?.toLowerCase() || ''
+  const name = filename.toLowerCase()
+  
+  // Return a component that renders the appropriate icon
+  const IconComponent = ({ className }: { className?: string }) => {
+    return <FileIcon filename={filename} className={className} size={16} />
+  }
+  
+  return IconComponent
+}
+
 // Folder icon component
 interface FolderIconProps {
   isOpen?: boolean
