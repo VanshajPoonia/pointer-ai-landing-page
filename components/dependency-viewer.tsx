@@ -106,20 +106,25 @@ export function DependencyViewer({
     setIsLoading(true)
     const deps: Dependency[] = []
     
+    if (!packageJson) {
+      setIsLoading(false)
+      return
+    }
+    
     // Parse dependencies
-    if (packageJson.dependencies) {
+    if (packageJson?.dependencies) {
       for (const [name, version] of Object.entries(packageJson.dependencies)) {
         deps.push({ name, currentVersion: version, type: 'dependency' })
       }
     }
     
-    if (packageJson.devDependencies) {
+    if (packageJson?.devDependencies) {
       for (const [name, version] of Object.entries(packageJson.devDependencies)) {
         deps.push({ name, currentVersion: version, type: 'devDependency' })
       }
     }
     
-    if (packageJson.peerDependencies) {
+    if (packageJson?.peerDependencies) {
       for (const [name, version] of Object.entries(packageJson.peerDependencies)) {
         deps.push({ name, currentVersion: version, type: 'peerDependency' })
       }
@@ -155,7 +160,7 @@ export function DependencyViewer({
   const handleUpdateAll = () => {
     dependencies.filter(d => d.hasUpdate).forEach(dep => {
       if (dep.latestVersion) {
-        onUpdateDependency(dep.name, `^${dep.latestVersion}`)
+        onUpdateDependency?.(dep.name, `^${dep.latestVersion}`)
       }
     })
     loadDependencies()
@@ -163,7 +168,7 @@ export function DependencyViewer({
 
   const handleAddPackage = () => {
     if (newPackage.name && newPackage.version) {
-      onAddDependency(newPackage.name, newPackage.version, newPackage.type)
+      onAddDependency?.(newPackage.name, newPackage.version, newPackage.type)
       setNewPackage({ name: '', version: '', type: 'dependency' })
       setShowAddDialog(false)
       loadDependencies()
@@ -335,7 +340,7 @@ export function DependencyViewer({
                           onClick={(e) => {
                             e.stopPropagation()
                             if (dep.latestVersion) {
-                              onUpdateDependency(dep.name, `^${dep.latestVersion}`)
+                              onUpdateDependency?.(dep.name, `^${dep.latestVersion}`)
                               loadDependencies()
                             }
                           }}
@@ -350,7 +355,7 @@ export function DependencyViewer({
                       <Button
                         onClick={(e) => {
                           e.stopPropagation()
-                          onRemoveDependency(dep.name, dep.type)
+                          onRemoveDependency?.(dep.name, dep.type)
                           loadDependencies()
                         }}
                         size="sm"

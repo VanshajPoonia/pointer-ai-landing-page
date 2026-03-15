@@ -42,7 +42,7 @@ interface ProjectTemplate {
 interface ProjectTemplatesProps {
   isOpen: boolean
   onClose: () => void
-  onSelectTemplate: (template: ProjectTemplate, projectName: string) => void
+  onSelectTemplate?: (template: ProjectTemplate, projectName: string) => void
 }
 
 const templates: ProjectTemplate[] = [
@@ -345,7 +345,7 @@ export function ProjectTemplates({
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null)
   const [projectName, setProjectName] = useState('')
 
-  const categories = ['frontend', 'fullstack', 'api', 'mobile']
+  const categories = ['frontend', 'fullstack', 'api', 'backend']
 
   const filteredTemplates = templates.filter(t => {
     const matchesSearch = 
@@ -358,7 +358,7 @@ export function ProjectTemplates({
 
   const handleCreate = () => {
     if (selectedTemplate && projectName.trim()) {
-      onSelectTemplate(selectedTemplate, projectName.trim())
+      onSelectTemplate?.(selectedTemplate, projectName.trim())
       setSelectedTemplate(null)
       setProjectName('')
       onClose()

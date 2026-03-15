@@ -132,7 +132,7 @@ export function NPMScriptRunner({
     const favorites = ['dev', 'build', 'lint', 'test']
     
     setScripts(
-      propsScripts.map(({ name, command }) => ({
+      (propsScripts || []).map(({ name, command }) => ({
         name,
         command,
         description: getScriptDescription(name),
@@ -171,7 +171,7 @@ export function NPMScriptRunner({
 
     setLocalRunningScripts(prev => ({ ...prev, [scriptName]: run }))
     setExpandedOutput(scriptName)
-    onRunScript(scriptName)
+    onRunScript?.(scriptName)
   }
 
   const handleStopScript = (scriptName: string) => {
@@ -184,7 +184,7 @@ export function NPMScriptRunner({
       setHistory(h => [updatedRun, ...h].slice(0, 10))
       return { ...prev, [scriptName]: updatedRun }
     })
-    onStopScript(scriptName)
+    onStopScript?.(scriptName)
   }
 
   // Update local running scripts when props change
@@ -193,7 +193,7 @@ export function NPMScriptRunner({
       const updated = { ...prev }
       // Update status based on runningScripts set
       for (const name of Object.keys(updated)) {
-        if (!runningScripts.has(name) && updated[name]?.status === 'running') {
+        if (!runningScripts?.has(name) && updated[name]?.status === 'running') {
           updated[name] = {
             ...updated[name],
             endTime: new Date(),
@@ -286,7 +286,7 @@ export function NPMScriptRunner({
                         key={script.name}
                         script={script}
                         run={localRunningScripts[script.name]}
-                        isRunning={runningScripts.has(script.name)}
+                        isRunning={runningScripts?.has(script.name) || false}
                         isExpanded={expandedOutput === script.name}
                         onRun={() => handleRunScript(script.name)}
                         onStop={() => handleStopScript(script.name)}
@@ -311,7 +311,7 @@ export function NPMScriptRunner({
                       key={script.name}
                       script={script}
                       run={localRunningScripts[script.name]}
-                      isRunning={runningScripts.has(script.name)}
+                      isRunning={runningScripts?.has(script.name) || false}
                       isExpanded={expandedOutput === script.name}
                       onRun={() => handleRunScript(script.name)}
                       onStop={() => handleStopScript(script.name)}
